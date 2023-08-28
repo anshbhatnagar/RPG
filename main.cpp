@@ -2,7 +2,6 @@
 #include <iostream>
 #include<cmath>
 
-int sprSize = 48;
 enum Direction {north, northeast, east, southeast, south, southwest, west, northwest, NULLDIR};
 enum State {normal, attackState, hitState, dyingState, deadState};
 
@@ -39,6 +38,7 @@ class Sprite: public sf::Sprite{
 class DynamicSprite: public Sprite{
     public:
         float speed;
+        bool dead = false;
 
         virtual void initialise(float speedVal, sf::Vector2f position, bool movableVal, int sprSizeVal, std::string textureAddress){
             speed = speedVal;
@@ -86,7 +86,6 @@ class Character: public DynamicSprite{
     public:
         int health;
         bool attacking = false;
-        bool dead = false;
 
 
         virtual void initialise(int healthVal, float speedVal, sf::Vector2f position, int sprSizeVal, std::string textureAddress){
@@ -106,10 +105,12 @@ class Character: public DynamicSprite{
         void wound(int damage){
             health -= damage;
 
-            if(health < 0){
-                startDying();
-            }else{
-                beingHit = true;
+            if(!dying){
+                if(health < 0){
+                    startDying();
+                }else{
+                    beingHit = true;
+                }
             }
         }
 
@@ -298,6 +299,7 @@ class NPC: public Character{
             if(frame >= resetFrame){
                 frame = 0;
                 elapsedms = 0;
+                dying = false;
                 die();
             }
         }
@@ -312,44 +314,42 @@ class NPC: public Character{
         }
 
         void updateFrame(float dt){
-            if(!dead){
-                int flipped = 1;
-                int state;
+            int flipped = 1;
+            int state;
 
-                elapsedms += dt*1e3;
-                frame = ((int)elapsedms)/100;
+            elapsedms += dt*1e3;
+            frame = ((int)elapsedms)/100;
 
-                if(dying){
-                    state = 4;
-                    deathAnimate();
-                }else if(beingHit){
-                    state = 3;
-                    hitAnimate();
-                }else{
-                    state = 0;
-                    defaultAnimate();
-                }
-
-
-                switch(dir){
-                    case west:
-                    case southwest:
-                    case northwest:
-                        flipped = -1;
-                        frame++;
-                        break;
-                    default:
-                        flipped = 1;
-                        break;
-                }
-
-                setTextureRect(sf::IntRect(frame*sprSize,state*sprSize,flipped*sprSize,sprSize));
+            if(dying){
+                state = 4;
+                deathAnimate();
+            }else if(beingHit){
+                state = 3;
+                hitAnimate();
+            }else{
+                state = 0;
+                defaultAnimate();
             }
+
+
+            switch(dir){
+                case west:
+                case southwest:
+                case northwest:
+                    flipped = -1;
+                    frame++;
+                    break;
+                default:
+                    flipped = 1;
+                    break;
+            }
+
+            setTextureRect(sf::IntRect(frame*sprSize,state*sprSize,flipped*sprSize,sprSize));
+            
         }
 
         void calcMovement(float dt){
             int random = 0;
-            srand((unsigned) time(NULL));
 
             random = rand() % 101;
 
@@ -414,11 +414,22 @@ class Game{
         int screenHeight = 600;
         sf::RenderWindow window{sf::VideoMode(screenWidth, screenHeight), "RPG!"};
         Player player;
-        NPC slime;
+        std::vector<DynamicSprite*> dynSprites;
+        std::vector<NPC> enemies;
 
         void setup(){
+            window.setFramerateLimit(120);
             player.initialise(100, 200, sf::Vector2f(0.f, 0.f));
-            slime.initialise(50, 50, sf::Vector2f(200.f, 200.f));
+            srand((unsigned) time(NULL));
+            for(int i=0; i<4; i++){
+                NPC slime;
+                enemies.push_back(slime);
+            }
+
+            for(auto & enemy : enemies){
+                enemy.initialise(50, 50, sf::Vector2f(rand() % 500, rand() % 500));
+            }
+            
         }
 
         void resolveCollision(DynamicSprite* sprite1, DynamicSprite* sprite2){
@@ -455,21 +466,42 @@ class Game{
             }
         }
 
-        void updateDynamicSprites(DynamicSprite* sprite1, DynamicSprite* sprite2, float dt){
-            sprite1->calcMovement(dt);
-            sprite2->calcMovement(dt);
+        void prepareDynSpritesArray(){
+            dynSprites.clear();
+            dynSprites.push_back(&player);
 
-            if(!slime.dead){
-                resolveCollision(sprite1, sprite2);
+            for(auto & enemy : enemies){
+                if(!enemy.dead){
+                    dynSprites.push_back(&enemy);
+                }
             }
-            keepOnScreen(sprite1);
-            keepOnScreen(sprite2);
+        }
 
-            sprite1->updateFrame(dt);
-            sprite2->updateFrame(dt);
+        void updateDynamicSprites(float dt){
+            prepareDynSpritesArray();
+            srand((unsigned) time(NULL));
 
-            sprite1->move();
-            sprite2->move();
+            for(auto & sprite : dynSprites){
+                sprite->calcMovement(dt);
+            }
+
+            int i = 0;
+            for(auto & sprite1 : dynSprites){
+                int j = 0;
+                for(auto & sprite2 : dynSprites){
+                    if(j>i){
+                        resolveCollision(sprite1, sprite2);
+                    }
+                    j++;
+                }
+                i++;
+            }
+
+            for(auto & sprite : dynSprites){
+                keepOnScreen(sprite);
+                sprite->updateFrame(dt);
+                sprite->move();
+            }
         }
 
         void mainLoop(){
@@ -488,16 +520,20 @@ class Game{
                             if(event.mouseButton.button == sf::Mouse::Left){
                                 player.attacking = true;
 
-                                float playerPosX = player.bounds.left+0.5f*player.bounds.width;
-                                float playerPosY = player.bounds.top+0.5f*player.bounds.height;
-                                float slimePosX = slime.bounds.left+0.5f*slime.bounds.width;
-                                float slimePosY = slime.bounds.top+0.5f*slime.bounds.height;
+                                for(auto & enemy : enemies){
+                                    if(!enemy.dead){
+                                        float playerPosX = player.bounds.left+0.5f*player.bounds.width;
+                                        float playerPosY = player.bounds.top+0.5f*player.bounds.height;
+                                        float enemyPosX = enemy.bounds.left+0.5f*enemy.bounds.width;
+                                        float enemyPosY = enemy.bounds.top+0.5f*enemy.bounds.height;
 
-                                float distX = abs(playerPosX - slimePosX);
-                                float distY = abs(playerPosY - slimePosY);
+                                        float distX = abs(playerPosX - enemyPosX);
+                                        float distY = abs(playerPosY - enemyPosY);
 
-                                if(distX < 1.2f*player.bounds.width and distY < 1.2f*player.bounds.height){
-                                    player.attack(&slime);
+                                        if(distX < 1.2f*player.bounds.width and distY < 1.2f*player.bounds.height){
+                                            player.attack(&enemy);
+                                        }
+                                    }
                                 }
                             }
                             break;
@@ -511,13 +547,14 @@ class Game{
                 float dt = timeStep.asMicroseconds();
                 dt /= 1e6;
                 
-                updateDynamicSprites(&player, &slime, dt);
+                updateDynamicSprites(dt);
 
                 window.clear();
-                window.draw(player);
-                if(!slime.dead){
-                    window.draw(slime);
+
+                for(auto & sprite : dynSprites){
+                    window.draw(*sprite);
                 }
+
                 //window.draw(player.getBoundingShape());
                 //window.draw(slime.getBoundingShape());
                 window.display();
@@ -535,7 +572,7 @@ int main() {
 
     try{
         myGame.run();
-    }catch (const std::exception& e) {
+    }catch(const std::exception& e){
         std::cerr << e.what() << std::endl;
         return 1;
     }

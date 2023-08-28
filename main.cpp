@@ -296,9 +296,9 @@ class Game{
         }
 
     private:
-        int width = 800;
-        int height = 600;
-        sf::RenderWindow window{sf::VideoMode(width, height), "RPG!"};
+        int screenWidth = 800;
+        int screenHeight = 600;
+        sf::RenderWindow window{sf::VideoMode(screenWidth, screenHeight), "RPG!"};
         Player player;
         NPC slime;
 
@@ -327,11 +327,27 @@ class Game{
             }
         }
 
+        void keepOnScreen(DynamicSprite* sprite){
+            if(sprite->peekBounds().top < 0){
+                sprite->collisionMovement(-sf::Vector2f(0.f, sprite->peekBounds().top));
+            }else if(sprite->peekBounds().top + sprite->peekBounds().height > screenHeight){
+                sprite->collisionMovement(-sf::Vector2f(0.f, sprite->peekBounds().top + sprite->peekBounds().height-screenHeight));
+            }
+
+            if(sprite->peekBounds().left < 0){
+                sprite->collisionMovement(-sf::Vector2f(sprite->peekBounds().left, 0.f));
+            }else if(sprite->peekBounds().left + sprite->peekBounds().width > screenWidth){
+                sprite->collisionMovement(-sf::Vector2f(sprite->peekBounds().left + sprite->peekBounds().width-screenWidth, 0.f));
+            }
+        }
+
         void updateDynamicSprites(DynamicSprite* sprite1, DynamicSprite* sprite2, float dt){
             sprite1->calcMovement(dt);
             sprite2->calcMovement(dt);
 
             resolveCollision(sprite1, sprite2);
+            keepOnScreen(sprite1);
+            keepOnScreen(sprite2);
 
             sprite1->updateFrame(dt);
             sprite2->updateFrame(dt);

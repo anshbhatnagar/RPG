@@ -1,8 +1,10 @@
 #include <SFML/Graphics.hpp>
 #include <iostream>
+#include<cmath>
 
 int sprSize = 48;
 enum Direction {north, northeast, east, southeast, south, southwest, west, northwest, NULLDIR};
+enum State {normal, attackState, hitState, dyingState, deadState};
 
 class Sprite: public sf::Sprite{
     public:
@@ -83,12 +85,38 @@ class DynamicSprite: public Sprite{
 class Character: public DynamicSprite{
     public:
         int health;
+        bool attacking = false;
+        bool dead = false;
+
 
         virtual void initialise(int healthVal, float speedVal, sf::Vector2f position, int sprSizeVal, std::string textureAddress){
             health = healthVal;
             DynamicSprite::initialise(speedVal, position, true, sprSizeVal, textureAddress);
         }
 
+        void startDying(){
+            dying = true;
+        }
+
+        void die(){
+            currentState = deadState;
+            dead = true;
+        }
+
+        void wound(int damage){
+            health -= damage;
+
+            if(health < 0){
+                startDying();
+            }else{
+                beingHit = true;
+            }
+        }
+
+    protected:
+        State currentState = normal;
+        bool beingHit = false;
+        bool dying = false;
 };
 
 class Player: public Character{
@@ -100,43 +128,73 @@ class Player: public Character{
             Character::initialise(healthVal, speedVal, position, sprSize, "sprites/characters/player.png");
         }
 
-        void updateFrame(float dt){
-            elapsedms += dt*1e3;
-            frame = ((int)elapsedms)/100;
-            if(frame==6){
+        void attackAnimate(){
+            int resetFrame = 4;
+
+            if(currentState != attackState){
+                frame = 0;
+                elapsedms = 0;
+                currentState = attackState;
+            }
+
+            if(frame >= resetFrame){
+                frame = 0;
+                elapsedms = 0;
+                attacking = false;
+                currentState = normal;
+            }
+        }
+
+        void defaultAnimate(){
+            int resetFrame = 6;
+
+            if(frame >= resetFrame){
                 frame = 0;
                 elapsedms = 0;
             }
+        }
+
+        void updateFrame(float dt){
+            int resetFrame = 6;
             int state = 0;
             int flipped = 1;
-            int movement = 0;
 
-            if(moving){
-                movement = 3;
+            elapsedms += dt*1e3;
+            frame = ((int)elapsedms)/100;
+
+            if(attacking){
+                state = 6;
+                attackAnimate();
+            }else if(moving){
+                state = 3;
+                defaultAnimate();
+            }else{
+                state = 0;
+                defaultAnimate();
             }
 
             switch(dir){
                 case east:
                 case southeast:
                 case northeast:
-                    state = 1;
+                    state += 1;
                     break;
                 case west:
                 case southwest:
                 case northwest:
-                    state = 1;
+                    state += 1;
                     flipped = -1;
                     frame++;
                     break;
                 case north:
-                    state = 2;
+                    state += 2;
                     break;
                 default:
-                    state = 0;
+                    state += 0;
                     break;
             }
 
-            setTextureRect(sf::IntRect(frame*sprSize,(state+movement)*sprSize,flipped*sprSize,sprSize));
+            setTextureRect(sf::IntRect(frame*sprSize,state*sprSize,flipped*sprSize,sprSize));
         }
 
         void calcMovement(float dt){
@@ -195,6 +253,11 @@ class Player: public Character{
             transform = rotation*translation;
             movement = transform*movement;
         }
+
+        void attack(Character* monster){
+            int weaponDamage = 15;
+            monster->wound(weaponDamage);
+        }
 };
 
 class NPC: public Character{
@@ -206,31 +269,82 @@ class NPC: public Character{
             Character::initialise(healthVal, speedVal, position, 32, "sprites/characters/slime.png");
         }
 
-        void updateFrame(float dt){
-            elapsedms += dt*1e3;
-            
-            frame = ((int)elapsedms)/100;
-            if(frame==4){
+        void hitAnimate(){
+            int resetFrame = 3;
+
+            if(currentState != hitState){
+                frame = 0;
+                elapsedms = 0;
+                currentState = hitState;
+            }
+
+            if(frame >= resetFrame){
+                frame = 0;
+                elapsedms = 0;
+                beingHit = false;
+                currentState = normal;
+            }
+        }
+
+        void deathAnimate(){
+            int resetFrame = 5;
+
+            if(currentState != dyingState){
+                frame = 0;
+                elapsedms = 0;
+                currentState = dyingState;
+            }
+
+            if(frame >= resetFrame){
+                frame = 0;
+                elapsedms = 0;
+                die();
+            }
+        }
+
+        void defaultAnimate(){
+            int resetFrame = 4;
+
+            if(frame >= resetFrame){
                 frame = 0;
                 elapsedms = 0;
             }
-            int state = 0;
-            int flipped = 1;
+        }
 
-            switch(dir){
-                case west:
-                case southwest:
-                case northwest:
-                    flipped = -1;
-                    frame++;
-                    break;
-                default:
-                    flipped = 1;
-                    break;
+        void updateFrame(float dt){
+            if(!dead){
+                int flipped = 1;
+                int state;
+
+                elapsedms += dt*1e3;
+                frame = ((int)elapsedms)/100;
+
+                if(dying){
+                    state = 4;
+                    deathAnimate();
+                }else if(beingHit){
+                    state = 3;
+                    hitAnimate();
+                }else{
+                    state = 0;
+                    defaultAnimate();
+                }
+
+
+                switch(dir){
+                    case west:
+                    case southwest:
+                    case northwest:
+                        flipped = -1;
+                        frame++;
+                        break;
+                    default:
+                        flipped = 1;
+                        break;
+                }
+
+                setTextureRect(sf::IntRect(frame*sprSize,state*sprSize,flipped*sprSize,sprSize));
             }
-
-            setTextureRect(sf::IntRect(frame*sprSize,state*sprSize,flipped*sprSize,sprSize));
-
         }
 
         void calcMovement(float dt){
@@ -345,7 +459,9 @@ class Game{
             sprite1->calcMovement(dt);
             sprite2->calcMovement(dt);
 
-            resolveCollision(sprite1, sprite2);
+            if(!slime.dead){
+                resolveCollision(sprite1, sprite2);
+            }
             keepOnScreen(sprite1);
             keepOnScreen(sprite2);
 
@@ -361,9 +477,33 @@ class Game{
 
             while(window.isOpen()){
                 sf::Event event;
+
                 while(window.pollEvent(event)){
                     if(event.type == sf::Event::Closed){
                         window.close();
+                    }
+
+                    switch(event.type){
+                        case sf::Event::MouseButtonPressed:
+                            if(event.mouseButton.button == sf::Mouse::Left){
+                                player.attacking = true;
+
+                                float playerPosX = player.bounds.left+0.5f*player.bounds.width;
+                                float playerPosY = player.bounds.top+0.5f*player.bounds.height;
+                                float slimePosX = slime.bounds.left+0.5f*slime.bounds.width;
+                                float slimePosY = slime.bounds.top+0.5f*slime.bounds.height;
+
+                                float distX = abs(playerPosX - slimePosX);
+                                float distY = abs(playerPosY - slimePosY);
+
+                                if(distX < 1.2f*player.bounds.width and distY < 1.2f*player.bounds.height){
+                                    player.attack(&slime);
+                                }
+                            }
+                            break;
+
+                        default:
+                            break;
                     }
                 }
 
@@ -375,7 +515,9 @@ class Game{
 
                 window.clear();
                 window.draw(player);
-                window.draw(slime);
+                if(!slime.dead){
+                    window.draw(slime);
+                }
                 //window.draw(player.getBoundingShape());
                 //window.draw(slime.getBoundingShape());
                 window.display();

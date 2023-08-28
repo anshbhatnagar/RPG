@@ -4,29 +4,19 @@
 int sprSize = 48;
 enum Direction {north, northeast, east, southeast, south, southwest, west, northwest, NULLDIR};
 
-class Character: public sf::Sprite{
+class Sprite: public sf::Sprite{
     public:
-        int health;
-        float speed;
         sf::FloatRect bounds;
 
-        void initialise(int healthVal, float speedVal, sf::Vector2f position, int sprSizeVal, std::string textureAddress){
+        virtual void initialise(sf::Vector2f position, int sprSizeVal, std::string textureAddress){
             if(!texture.loadFromFile(textureAddress)){
                 throw std::runtime_error("failed to load player sprite!");
             }
             sprSize = sprSizeVal;
             setTexture(texture);
             setTextureRect(sf::IntRect(0,0,sprSize,sprSize));
-            health = healthVal;
-            speed = speedVal;
             setScale(sf::Vector2f(2.f, 2.f));
             setPosition(position);
-        }
-
-        sf::FloatRect peekBounds(){
-            sf::Transform moveMatrix;
-            moveMatrix.translate(movement);
-            return moveMatrix.transformRect(bounds);
         }
 
         sf::RectangleShape getBoundingShape(){
@@ -37,6 +27,27 @@ class Character: public sf::Sprite{
             boundingShape.setOutlineColor(sf::Color::Red);
             boundingShape.setOutlineThickness(1);
             return boundingShape;
+        }
+
+    protected:
+        int sprSize;
+        sf::Texture texture;
+};
+
+class DynamicSprite: public Sprite{
+    public:
+        float speed;
+
+        virtual void initialise(float speedVal, sf::Vector2f position, bool movableVal, int sprSizeVal, std::string textureAddress){
+            speed = speedVal;
+            movable = movableVal;
+            Sprite::initialise(position, sprSizeVal, textureAddress);
+        }
+
+        sf::FloatRect peekBounds(){
+            sf::Transform moveMatrix;
+            moveMatrix.translate(movement);
+            return moveMatrix.transformRect(bounds);
         }
 
         void collisionMovement(sf::Vector2f moveVector){
@@ -50,19 +61,39 @@ class Character: public sf::Sprite{
             sf::Sprite::move(movement);
         }
 
+        virtual void updateFrame(float dt){
+            throw std::runtime_error("this Character base class function is not meant to be accessed directly!");
+        }
+        
+        virtual void calcMovement(float dt){
+            throw std::runtime_error("this Character base class function is not meant to be accessed directly!");
+        }
+
+
     protected:
-        int sprSize = 48;
-        sf::Texture texture;
         float elapsedms = 0;
         int frame = 0;
         Direction dir = south;
         bool moving = false;
+        bool movable = false;
         sf::Vector2f movement;
+};
+
+
+class Character: public DynamicSprite{
+    public:
+        int health;
+
+        virtual void initialise(int healthVal, float speedVal, sf::Vector2f position, int sprSizeVal, std::string textureAddress){
+            health = healthVal;
+            DynamicSprite::initialise(speedVal, position, true, sprSizeVal, textureAddress);
+        }
+
 };
 
 class Player: public Character{
     public:
-        virtual void initialise(int healthVal, float speedVal, sf::Vector2f position){
+        void initialise(int healthVal, float speedVal, sf::Vector2f position){
             int sprSize = 48;
             sf::Vector2f boundSize = sprSize*0.333f*sf::Vector2f(2.f, 2.7f);
             bounds = sf::FloatRect(position+boundSize, boundSize);
@@ -168,7 +199,7 @@ class Player: public Character{
 
 class NPC: public Character{
     public:
-        virtual void initialise(int healthVal, float speedVal, sf::Vector2f position){
+        void initialise(int healthVal, float speedVal, sf::Vector2f position){
             int sprSize = 32;
             sf::Vector2f boundSize = sprSize*0.4f*sf::Vector2f(1.7f, 1.9f);
             bounds = sf::FloatRect(position+boundSize, boundSize);
@@ -276,7 +307,7 @@ class Game{
             slime.initialise(50, 50, sf::Vector2f(200.f, 200.f));
         }
 
-        void resolveCollision(Player* sprite1, NPC* sprite2){
+        void resolveCollision(DynamicSprite* sprite1, DynamicSprite* sprite2){
             sf::FloatRect intersection;
 
             if(sprite1->peekBounds().intersects(sprite2->peekBounds(), intersection)){
@@ -296,7 +327,7 @@ class Game{
             }
         }
 
-        void updateSprites(Player* sprite1, NPC* sprite2, float dt){
+        void updateDynamicSprites(DynamicSprite* sprite1, DynamicSprite* sprite2, float dt){
             sprite1->calcMovement(dt);
             sprite2->calcMovement(dt);
 
@@ -324,7 +355,7 @@ class Game{
                 float dt = timeStep.asMicroseconds();
                 dt /= 1e6;
                 
-                updateSprites(&player, &slime, dt);
+                updateDynamicSprites(&player, &slime, dt);
 
                 window.clear();
                 window.draw(player);

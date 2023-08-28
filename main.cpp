@@ -2,12 +2,13 @@
 #include <iostream>
 
 int sprSize = 48;
-enum Direction {north, northeast, east, southeast, south, southwest, west, northwest};
+enum Direction {north, northeast, east, southeast, south, southwest, west, northwest, NULLDIR};
 
 class Character: public sf::Sprite{
     public:
         int health;
         float speed;
+        sf::FloatRect bounds;
 
         void initialise(int healthVal, float speedVal, sf::Vector2f position, int sprSizeVal, std::string textureAddress){
             if(!texture.loadFromFile(textureAddress)){
@@ -22,6 +23,33 @@ class Character: public sf::Sprite{
             setPosition(position);
         }
 
+        sf::FloatRect peekBounds(){
+            sf::Transform moveMatrix;
+            moveMatrix.translate(movement);
+            return moveMatrix.transformRect(bounds);
+        }
+
+        sf::RectangleShape getBoundingShape(){
+            sf::RectangleShape boundingShape;
+            boundingShape.setSize(sf::Vector2f(bounds.width, bounds.height));
+            boundingShape.setPosition(sf::Vector2f(bounds.left, bounds.top));
+            boundingShape.setFillColor(sf::Color::Transparent);
+            boundingShape.setOutlineColor(sf::Color::Red);
+            boundingShape.setOutlineThickness(1);
+            return boundingShape;
+        }
+
+        void collisionMovement(sf::Vector2f moveVector){
+            movement += moveVector;
+        }
+
+        virtual void move(){
+            sf::Transform moveMatrix;
+            moveMatrix.translate(movement);
+            bounds = moveMatrix.transformRect(bounds);
+            sf::Sprite::move(movement);
+        }
+
     protected:
         int sprSize = 48;
         sf::Texture texture;
@@ -29,16 +57,19 @@ class Character: public sf::Sprite{
         int frame = 0;
         Direction dir = south;
         bool moving = false;
+        sf::Vector2f movement;
 };
 
 class Player: public Character{
     public:
         virtual void initialise(int healthVal, float speedVal, sf::Vector2f position){
-            Character::initialise(healthVal, speedVal, position, 48, "sprites/characters/player.png");
+            int sprSize = 48;
+            sf::Vector2f boundSize = sprSize*0.333f*sf::Vector2f(2.f, 2.7f);
+            bounds = sf::FloatRect(position+boundSize, boundSize);
+            Character::initialise(healthVal, speedVal, position, sprSize, "sprites/characters/player.png");
         }
 
-        void update(float dt){
-            playerControl(dt);
+        void updateFrame(float dt){
             elapsedms += dt*1e3;
             frame = ((int)elapsedms)/100;
             if(frame==6){
@@ -77,13 +108,12 @@ class Player: public Character{
             setTextureRect(sf::IntRect(frame*sprSize,(state+movement)*sprSize,flipped*sprSize,sprSize));
         }
 
-    protected:
-        void playerControl(float dt){
+        void calcMovement(float dt){
             sf::Transform translation;
             sf::Transform rotation;
             sf::Transform transform;
             sf::Vector2f unit = dt*speed*sf::Vector2f(1.f, 0.f);
-            sf::Vector2f movement = sf::Vector2f(0.f, 0.f);
+            movement = sf::Vector2f(0.f, 0.f);
             bool multikey = false;
             moving = false;
 
@@ -132,19 +162,22 @@ class Player: public Character{
                 }
             }
             transform = rotation*translation;
-            move(transform*movement);
+            movement = transform*movement;
         }
 };
 
 class NPC: public Character{
     public:
         virtual void initialise(int healthVal, float speedVal, sf::Vector2f position){
+            int sprSize = 32;
+            sf::Vector2f boundSize = sprSize*0.4f*sf::Vector2f(1.7f, 1.9f);
+            bounds = sf::FloatRect(position+boundSize, boundSize);
             Character::initialise(healthVal, speedVal, position, 32, "sprites/characters/slime.png");
         }
 
-        void update(float dt){
+        void updateFrame(float dt){
             elapsedms += dt*1e3;
-            npcControl(dt);
+            
             frame = ((int)elapsedms)/100;
             if(frame==4){
                 frame = 0;
@@ -166,10 +199,10 @@ class NPC: public Character{
             }
 
             setTextureRect(sf::IntRect(frame*sprSize,state*sprSize,flipped*sprSize,sprSize));
+
         }
-    
-    protected:
-        void npcControl(float dt){
+
+        void calcMovement(float dt){
             int random = 0;
             srand((unsigned) time(NULL));
 
@@ -179,7 +212,7 @@ class NPC: public Character{
             sf::Transform rotation;
             sf::Transform transform;
             sf::Vector2f unit = dt*speed*sf::Vector2f(1.f, 0.f);
-            sf::Vector2f movement = sf::Vector2f(0.f, 0.f);
+            movement = sf::Vector2f(0.f, 0.f);
 
             if(moving){
                 if(random < 20){
@@ -215,7 +248,7 @@ class NPC: public Character{
                 }
 
                 transform = rotation*translation;
-                move(transform*movement);
+                movement = transform*movement;
 
             }else if(random < 40){
                 moving = true;
@@ -240,7 +273,40 @@ class Game{
 
         void setup(){
             player.initialise(100, 200, sf::Vector2f(0.f, 0.f));
-            slime.initialise(50, 50, sf::Vector2f(5.f, 5.f));
+            slime.initialise(50, 50, sf::Vector2f(200.f, 200.f));
+        }
+
+        void resolveCollision(Player* sprite1, NPC* sprite2){
+            sf::FloatRect intersection;
+
+            if(sprite1->peekBounds().intersects(sprite2->peekBounds(), intersection)){
+                if(intersection.width < intersection.height){
+                    if(sprite2->peekBounds().left < sprite1->peekBounds().left){
+                        sprite1->collisionMovement(sf::Vector2f(intersection.width, 0.f));
+                    }else{
+                        sprite1->collisionMovement(-sf::Vector2f(intersection.width, 0.f));
+                    }
+                }else{
+                    if(sprite2->peekBounds().top < sprite1->peekBounds().top){
+                        sprite1->collisionMovement(sf::Vector2f(0.f, intersection.height));
+                    }else{
+                        sprite1->collisionMovement(-sf::Vector2f(0.f, intersection.height));
+                    }
+                }
+            }
+        }
+
+        void updateSprites(Player* sprite1, NPC* sprite2, float dt){
+            sprite1->calcMovement(dt);
+            sprite2->calcMovement(dt);
+
+            resolveCollision(sprite1, sprite2);
+
+            sprite1->updateFrame(dt);
+            sprite2->updateFrame(dt);
+
+            sprite1->move();
+            sprite2->move();
         }
 
         void mainLoop(){
@@ -257,13 +323,14 @@ class Game{
                 sf::Time timeStep = clock.restart();
                 float dt = timeStep.asMicroseconds();
                 dt /= 1e6;
-
-                player.update(dt);
-                slime.update(dt);
+                
+                updateSprites(&player, &slime, dt);
 
                 window.clear();
                 window.draw(player);
                 window.draw(slime);
+                //window.draw(player.getBoundingShape());
+                //window.draw(slime.getBoundingShape());
                 window.display();
             }
         }

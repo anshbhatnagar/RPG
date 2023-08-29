@@ -1,6 +1,7 @@
 #include <SFML/Graphics.hpp>
 #include <iostream>
-#include<cmath>
+#include <fstream>
+#include <cmath>
 
 enum Direction {north, northeast, east, southeast, south, southwest, west, northwest, NULLDIR};
 enum State {normal, attackState, hitState, dyingState, deadState};
@@ -124,7 +125,7 @@ class NPC: public Character{
             Character::initialise(healthVal, speedVal, position, 32, texture);
         }
 
-        void hitAnimate(){
+        void hitAnimate(int& state){
             int resetFrame = 3;
 
             if(currentState != hitState){
@@ -135,6 +136,7 @@ class NPC: public Character{
 
             if(frame >= resetFrame){
                 frame = 0;
+                state = 0;
                 elapsedms = 0;
                 beingHit = false;
                 currentState = normal;
@@ -151,7 +153,7 @@ class NPC: public Character{
             }
 
             if(frame >= resetFrame){
-                frame = 0;
+                frame = resetFrame;
                 elapsedms = 0;
                 dying = false;
                 die();
@@ -179,7 +181,7 @@ class NPC: public Character{
                 deathAnimate();
             }else if(beingHit){
                 state = 3;
-                hitAnimate();
+                hitAnimate(state);
             }else{
                 state = 0;
                 defaultAnimate();
@@ -400,18 +402,16 @@ class Player: public Character{
             attacking = true;
 
             for(auto & enemy : enemies){
-                if(!enemy.dead){
-                    float playerPosX = bounds.left+0.5f*bounds.width;
-                    float playerPosY = bounds.top+0.5f*bounds.height;
-                    float enemyPosX = enemy.bounds.left+0.5f*enemy.bounds.width;
-                    float enemyPosY = enemy.bounds.top+0.5f*enemy.bounds.height;
+                float playerPosX = bounds.left+0.5f*bounds.width;
+                float playerPosY = bounds.top+0.5f*bounds.height;
+                float enemyPosX = enemy.bounds.left+0.5f*enemy.bounds.width;
+                float enemyPosY = enemy.bounds.top+0.5f*enemy.bounds.height;
 
-                    float distX = abs(playerPosX - enemyPosX);
-                    float distY = abs(playerPosY - enemyPosY);
+                float distX = abs(playerPosX - enemyPosX);
+                float distY = abs(playerPosY - enemyPosY);
 
-                    if(distX < 1.2f*bounds.width and distY < 1.2f*bounds.height){
-                        attack(enemy);
-                    }
+                if(distX < 1.2f*bounds.width and distY < 1.2f*bounds.height){
+                    attack(enemy);
                 }
             }
         }
@@ -458,35 +458,59 @@ class Game{
             sheets.push_back(plainSheet);
         }
 
-        void createMap(){
-            int sprSize = 16;
-            for(int i=0; i<screenWidth/sprSize/2; i++){
-                for(int j=0; j<screenHeight/sprSize/2; j++){
-                    Sprite grassBlock;
-                    grassBlock.initialise(sf::Vector2f(2*sprSize*i, 2*sprSize*j), sprSize, sheets[2]);
-                    grassBlock.setScale(sf::Vector2f(2, 2));
-                    mapSprites.push_back(grassBlock);
+        std::vector<int> splitString(std::string givenStr, char delimiter){
+            int i = 0;
+            int j = 0;
+            std::string tempStr;
+            std::vector<int> elements;
+
+            for(auto & stringChar : givenStr){
+                if(stringChar == ','){
+                    if(tempStr == ""){
+                        throw std::runtime_error("error reading map file!");
+                    }
+                    elements.push_back(std::stoi(tempStr));
+                    tempStr = "";
+                    j=0;
+                }else{
+                    tempStr += stringChar;
+                    i++;
+                    j++;
                 }
             }
+            elements.push_back(std::stoi(tempStr));
+            return elements;
+        }
 
-            for(int i=0; i<screenWidth/sprSize/2; i++){
-                Sprite upperEdgeBlock;
-                Sprite lowerEdgeBlock;
-                Sprite pathBlock;
-                pathBlock.initialise(sf::Vector2f(2*sprSize*i, 2*sprSize*10), sprSize, sheets[3]);
-                pathBlock.setTextureRect(sf::IntRect(sprSize*2,sprSize*1,sprSize,sprSize));
-                pathBlock.setScale(sf::Vector2f(2, 2));
-                mapSprites.push_back(pathBlock);
-                upperEdgeBlock.initialise(sf::Vector2f(2*sprSize*i, 2*sprSize*9), sprSize, sheets[3]);
-                upperEdgeBlock.setTextureRect(sf::IntRect(sprSize*2,sprSize*0,sprSize,sprSize));
-                upperEdgeBlock.setScale(sf::Vector2f(2, 2));
-                mapSprites.push_back(upperEdgeBlock);
-                lowerEdgeBlock.initialise(sf::Vector2f(2*sprSize*i, 2*sprSize*11), sprSize, sheets[3]);
-                lowerEdgeBlock.setTextureRect(sf::IntRect(sprSize*2,sprSize*2,sprSize,sprSize));
-                lowerEdgeBlock.setScale(sf::Vector2f(2, 2));
-                mapSprites.push_back(lowerEdgeBlock);
+        void createMap(){
+            int sprSize = 16;
+            std::ifstream map;
+            map.open("maps/map1.csv");
+            if(map.fail()){
+                throw std::runtime_error("error loading map file!");
             }
+            std::string row;
 
+            int j = 0;
+            while(std::getline(map, row)){
+                int i = 0;
+                std::vector<int> ids = splitString(row, ',');
+                for(auto & id : ids){
+                    Sprite block;
+                    if(id==0){
+                        block.initialise(sf::Vector2f(2*sprSize*i, 2*sprSize*j), sprSize, sheets[2]);
+                    }else{
+                        id -= 1;
+                        block.initialise(sf::Vector2f(2*sprSize*i, 2*sprSize*j), sprSize, sheets[3]);
+                        block.setTextureRect(sf::IntRect(sprSize*(id%6),sprSize*(id/6),sprSize,sprSize));
+                    }
+                    block.setScale(sf::Vector2f(2, 2));
+                    mapSprites.push_back(block);
+                    i++;
+                }
+                j++;
+            }
+            map.close();
         }
 
         void setup(){
@@ -585,8 +609,6 @@ class Game{
                 }
             }
         }
-
-
 
         void mainLoop(){
             sf::Clock clock;

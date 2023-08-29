@@ -9,10 +9,7 @@ class Sprite: public sf::Sprite{
     public:
         sf::FloatRect bounds;
 
-        virtual void initialise(sf::Vector2f position, int sprSizeVal, std::string textureAddress){
-            if(!texture.loadFromFile(textureAddress)){
-                throw std::runtime_error("failed to load player sprite!");
-            }
+        virtual void initialise(sf::Vector2f position, int sprSizeVal, sf::Texture& texture){
             sprSize = sprSizeVal;
             setTexture(texture);
             setTextureRect(sf::IntRect(0,0,sprSize,sprSize));
@@ -32,7 +29,6 @@ class Sprite: public sf::Sprite{
 
     protected:
         int sprSize;
-        sf::Texture texture;
 };
 
 class DynamicSprite: public Sprite{
@@ -40,10 +36,10 @@ class DynamicSprite: public Sprite{
         float speed;
         bool dead = false;
 
-        virtual void initialise(float speedVal, sf::Vector2f position, bool movableVal, int sprSizeVal, std::string textureAddress){
+        virtual void initialise(float speedVal, sf::Vector2f position, bool movableVal, int sprSizeVal, sf::Texture& texture){
             speed = speedVal;
             movable = movableVal;
-            Sprite::initialise(position, sprSizeVal, textureAddress);
+            Sprite::initialise(position, sprSizeVal, texture);
         }
 
         sf::FloatRect peekBounds(){
@@ -81,16 +77,15 @@ class DynamicSprite: public Sprite{
         sf::Vector2f movement;
 };
 
-
 class Character: public DynamicSprite{
     public:
         int health;
         bool attacking = false;
 
 
-        virtual void initialise(int healthVal, float speedVal, sf::Vector2f position, int sprSizeVal, std::string textureAddress){
+        virtual void initialise(int healthVal, float speedVal, sf::Vector2f position, int sprSizeVal, sf::Texture& texture){
             health = healthVal;
-            DynamicSprite::initialise(speedVal, position, true, sprSizeVal, textureAddress);
+            DynamicSprite::initialise(speedVal, position, true, sprSizeVal, texture);
         }
 
         void startDying(){
@@ -120,154 +115,13 @@ class Character: public DynamicSprite{
         bool dying = false;
 };
 
-class Player: public Character{
-    public:
-        void initialise(int healthVal, float speedVal, sf::Vector2f position){
-            int sprSize = 48;
-            sf::Vector2f boundSize = sprSize*0.333f*sf::Vector2f(2.f, 2.7f);
-            bounds = sf::FloatRect(position+boundSize, boundSize);
-            Character::initialise(healthVal, speedVal, position, sprSize, "sprites/characters/player.png");
-        }
-
-        void attackAnimate(){
-            int resetFrame = 4;
-
-            if(currentState != attackState){
-                frame = 0;
-                elapsedms = 0;
-                currentState = attackState;
-            }
-
-            if(frame >= resetFrame){
-                frame = 0;
-                elapsedms = 0;
-                attacking = false;
-                currentState = normal;
-            }
-        }
-
-        void defaultAnimate(){
-            int resetFrame = 6;
-
-            if(frame >= resetFrame){
-                frame = 0;
-                elapsedms = 0;
-            }
-        }
-
-        void updateFrame(float dt){
-            int resetFrame = 6;
-            int state = 0;
-            int flipped = 1;
-
-            elapsedms += dt*1e3;
-            frame = ((int)elapsedms)/100;
-
-            if(attacking){
-                state = 6;
-                attackAnimate();
-            }else if(moving){
-                state = 3;
-                defaultAnimate();
-            }else{
-                state = 0;
-                defaultAnimate();
-            }
-
-            switch(dir){
-                case east:
-                case southeast:
-                case northeast:
-                    state += 1;
-                    break;
-                case west:
-                case southwest:
-                case northwest:
-                    state += 1;
-                    flipped = -1;
-                    frame++;
-                    break;
-                case north:
-                    state += 2;
-                    break;
-                default:
-                    state += 0;
-                    break;
-            }
-
-            setTextureRect(sf::IntRect(frame*sprSize,state*sprSize,flipped*sprSize,sprSize));
-        }
-
-        void calcMovement(float dt){
-            sf::Transform translation;
-            sf::Transform rotation;
-            sf::Transform transform;
-            sf::Vector2f unit = dt*speed*sf::Vector2f(1.f, 0.f);
-            movement = sf::Vector2f(0.f, 0.f);
-            bool multikey = false;
-            moving = false;
-
-            if(sf::Keyboard::isKeyPressed(sf::Keyboard::D)){
-                moving = true;
-                translation.translate(unit);
-                if(sf::Keyboard::isKeyPressed(sf::Keyboard::W)){
-                    rotation.rotate(-45);
-                    dir = northeast;
-                    multikey = true;
-                }else if(sf::Keyboard::isKeyPressed(sf::Keyboard::S)){
-                    rotation.rotate(45);
-                    dir = southeast;
-                    multikey = true;
-                }else{
-                    dir = east;
-                }
-            }else if(sf::Keyboard::isKeyPressed(sf::Keyboard::A)){
-                moving = true;
-                translation.translate(unit);
-                if(sf::Keyboard::isKeyPressed(sf::Keyboard::W)){
-                    rotation.rotate(-135);
-                    dir = northwest;
-                    multikey = true;
-                }else if(sf::Keyboard::isKeyPressed(sf::Keyboard::S)){
-                    rotation.rotate(135);
-                    dir = southwest;
-                    multikey = true;
-                }else{
-                    rotation.rotate(180);
-                    dir = west;
-                }
-            }
-
-            if(!multikey){
-                if(sf::Keyboard::isKeyPressed(sf::Keyboard::W)){
-                    moving = true;
-                    translation.translate(unit);
-                    rotation.rotate(-90);
-                    dir = north;
-                }else if(sf::Keyboard::isKeyPressed(sf::Keyboard::S)){
-                    moving = true;
-                    translation.translate(unit);
-                    rotation.rotate(90);
-                    dir = south;
-                }
-            }
-            transform = rotation*translation;
-            movement = transform*movement;
-        }
-
-        void attack(Character* monster){
-            int weaponDamage = 15;
-            monster->wound(weaponDamage);
-        }
-};
-
 class NPC: public Character{
     public:
-        void initialise(int healthVal, float speedVal, sf::Vector2f position){
+        void initialise(int healthVal, float speedVal, sf::Vector2f position, sf::Texture& texture){
             int sprSize = 32;
             sf::Vector2f boundSize = sprSize*0.4f*sf::Vector2f(1.7f, 1.9f);
             bounds = sf::FloatRect(position+boundSize, boundSize);
-            Character::initialise(healthVal, speedVal, position, 32, "sprites/characters/slime.png");
+            Character::initialise(healthVal, speedVal, position, 32, texture);
         }
 
         void hitAnimate(){
@@ -401,6 +255,167 @@ class NPC: public Character{
         }
 };
 
+class Player: public Character{
+    public:
+        void initialise(int healthVal, float speedVal, sf::Vector2f position, sf::Texture& texture){
+            int sprSize = 48;
+            sf::Vector2f boundSize = sprSize*0.333f*sf::Vector2f(2.f, 2.7f);
+            bounds = sf::FloatRect(position+boundSize, boundSize);
+            Character::initialise(healthVal, speedVal, position, sprSize, texture);
+        }
+
+        void attackAnimate(){
+            int resetFrame = 4;
+
+            if(currentState != attackState){
+                frame = 0;
+                elapsedms = 0;
+                currentState = attackState;
+            }
+
+            if(frame >= resetFrame){
+                frame = 0;
+                elapsedms = 0;
+                attacking = false;
+                currentState = normal;
+            }
+        }
+
+        void defaultAnimate(){
+            int resetFrame = 6;
+
+            if(frame >= resetFrame){
+                frame = 0;
+                elapsedms = 0;
+            }
+        }
+
+        void updateFrame(float dt){
+            int resetFrame = 6;
+            int state = 0;
+            int flipped = 1;
+
+            elapsedms += dt*1e3;
+            frame = ((int)elapsedms)/100;
+
+            if(attacking){
+                state = 6;
+                attackAnimate();
+            }else if(moving){
+                state = 3;
+                defaultAnimate();
+            }else{
+                state = 0;
+                defaultAnimate();
+            }
+
+            switch(dir){
+                case east:
+                case southeast:
+                case northeast:
+                    state += 1;
+                    break;
+                case west:
+                case southwest:
+                case northwest:
+                    state += 1;
+                    flipped = -1;
+                    frame++;
+                    break;
+                case north:
+                    state += 2;
+                    break;
+                default:
+                    state += 0;
+                    break;
+            }
+
+            setTextureRect(sf::IntRect(frame*sprSize,state*sprSize,flipped*sprSize,sprSize));
+        }
+
+        void calcMovement(float dt){
+            sf::Transform translation;
+            sf::Transform rotation;
+            sf::Transform transform;
+            sf::Vector2f unit = dt*speed*sf::Vector2f(1.f, 0.f);
+            movement = sf::Vector2f(0.f, 0.f);
+            bool multikey = false;
+            moving = false;
+
+            if(sf::Keyboard::isKeyPressed(sf::Keyboard::D)){
+                moving = true;
+                translation.translate(unit);
+                if(sf::Keyboard::isKeyPressed(sf::Keyboard::W)){
+                    rotation.rotate(-45);
+                    dir = northeast;
+                    multikey = true;
+                }else if(sf::Keyboard::isKeyPressed(sf::Keyboard::S)){
+                    rotation.rotate(45);
+                    dir = southeast;
+                    multikey = true;
+                }else{
+                    dir = east;
+                }
+            }else if(sf::Keyboard::isKeyPressed(sf::Keyboard::A)){
+                moving = true;
+                translation.translate(unit);
+                if(sf::Keyboard::isKeyPressed(sf::Keyboard::W)){
+                    rotation.rotate(-135);
+                    dir = northwest;
+                    multikey = true;
+                }else if(sf::Keyboard::isKeyPressed(sf::Keyboard::S)){
+                    rotation.rotate(135);
+                    dir = southwest;
+                    multikey = true;
+                }else{
+                    rotation.rotate(180);
+                    dir = west;
+                }
+            }
+
+            if(!multikey){
+                if(sf::Keyboard::isKeyPressed(sf::Keyboard::W)){
+                    moving = true;
+                    translation.translate(unit);
+                    rotation.rotate(-90);
+                    dir = north;
+                }else if(sf::Keyboard::isKeyPressed(sf::Keyboard::S)){
+                    moving = true;
+                    translation.translate(unit);
+                    rotation.rotate(90);
+                    dir = south;
+                }
+            }
+            transform = rotation*translation;
+            movement = transform*movement;
+        }
+        
+        void attack(Character& monster){
+            int weaponDamage = 15;
+            monster.wound(weaponDamage);
+        }
+
+        void attackNearbyEnemies(std::vector<NPC>& enemies){
+            attacking = true;
+
+            for(auto & enemy : enemies){
+                if(!enemy.dead){
+                    float playerPosX = bounds.left+0.5f*bounds.width;
+                    float playerPosY = bounds.top+0.5f*bounds.height;
+                    float enemyPosX = enemy.bounds.left+0.5f*enemy.bounds.width;
+                    float enemyPosY = enemy.bounds.top+0.5f*enemy.bounds.height;
+
+                    float distX = abs(playerPosX - enemyPosX);
+                    float distY = abs(playerPosY - enemyPosY);
+
+                    if(distX < 1.2f*bounds.width and distY < 1.2f*bounds.height){
+                        attack(enemy);
+                    }
+                }
+            }
+        }
+};
+
 class Game{
     public:
         void run(){
@@ -416,20 +431,32 @@ class Game{
         Player player;
         std::vector<DynamicSprite*> dynSprites;
         std::vector<NPC> enemies;
+        std::vector<sf::Texture> sheets;
+
+        void loadTextures(){
+            sf::Texture playerSheet;
+            sf::Texture slimeSheet;
+            if(!playerSheet.loadFromFile("sprites/characters/player.png")){
+                throw std::runtime_error("failed to load player sprite!");
+            }
+            if(!slimeSheet.loadFromFile("sprites/characters/slime.png")){
+                throw std::runtime_error("failed to load slime sprite!");
+            }
+            sheets.push_back(playerSheet);
+            sheets.push_back(slimeSheet);
+        }
 
         void setup(){
+            loadTextures();
             window.setFramerateLimit(120);
-            player.initialise(100, 200, sf::Vector2f(0.f, 0.f));
+            
+            player.initialise(100, 200, sf::Vector2f(0.f, 0.f),sheets[0]);
             srand((unsigned) time(NULL));
             for(int i=0; i<4; i++){
                 NPC slime;
                 enemies.push_back(slime);
+                enemies[i].initialise(50, 50, sf::Vector2f(rand() % 500, rand() % 500), sheets[1]);
             }
-
-            for(auto & enemy : enemies){
-                enemy.initialise(50, 50, sf::Vector2f(rand() % 500, rand() % 500));
-            }
-            
         }
 
         void resolveCollision(DynamicSprite* sprite1, DynamicSprite* sprite2){
@@ -471,9 +498,7 @@ class Game{
             dynSprites.push_back(&player);
 
             for(auto & enemy : enemies){
-                if(!enemy.dead){
-                    dynSprites.push_back(&enemy);
-                }
+                dynSprites.push_back(&enemy);
             }
         }
 
@@ -504,6 +529,19 @@ class Game{
             }
         }
 
+        void grimReaper(){
+            int i = 0;
+            for(auto & enemy : enemies){
+                if(enemy.dead){
+                    enemies.erase(enemies.begin()+i);
+                }else{
+                    i++;
+                }
+            }
+        }
+
+
+
         void mainLoop(){
             sf::Clock clock;
 
@@ -518,23 +556,7 @@ class Game{
                     switch(event.type){
                         case sf::Event::MouseButtonPressed:
                             if(event.mouseButton.button == sf::Mouse::Left){
-                                player.attacking = true;
-
-                                for(auto & enemy : enemies){
-                                    if(!enemy.dead){
-                                        float playerPosX = player.bounds.left+0.5f*player.bounds.width;
-                                        float playerPosY = player.bounds.top+0.5f*player.bounds.height;
-                                        float enemyPosX = enemy.bounds.left+0.5f*enemy.bounds.width;
-                                        float enemyPosY = enemy.bounds.top+0.5f*enemy.bounds.height;
-
-                                        float distX = abs(playerPosX - enemyPosX);
-                                        float distY = abs(playerPosY - enemyPosY);
-
-                                        if(distX < 1.2f*player.bounds.width and distY < 1.2f*player.bounds.height){
-                                            player.attack(&enemy);
-                                        }
-                                    }
-                                }
+                                player.attackNearbyEnemies(enemies);
                             }
                             break;
 
@@ -547,6 +569,7 @@ class Game{
                 float dt = timeStep.asMicroseconds();
                 dt /= 1e6;
                 
+                grimReaper();
                 updateDynamicSprites(dt);
 
                 window.clear();
@@ -555,8 +578,6 @@ class Game{
                     window.draw(*sprite);
                 }
 
-                //window.draw(player.getBoundingShape());
-                //window.draw(slime.getBoundingShape());
                 window.display();
             }
         }

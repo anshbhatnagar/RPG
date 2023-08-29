@@ -13,7 +13,6 @@ class Sprite: public sf::Sprite{
             sprSize = sprSizeVal;
             setTexture(texture);
             setTextureRect(sf::IntRect(0,0,sprSize,sprSize));
-            setScale(sf::Vector2f(2.f, 2.f));
             setPosition(position);
         }
 
@@ -121,6 +120,7 @@ class NPC: public Character{
             int sprSize = 32;
             sf::Vector2f boundSize = sprSize*0.4f*sf::Vector2f(1.7f, 1.9f);
             bounds = sf::FloatRect(position+boundSize, boundSize);
+            setScale(sf::Vector2f(2.f, 2.f));
             Character::initialise(healthVal, speedVal, position, 32, texture);
         }
 
@@ -261,6 +261,7 @@ class Player: public Character{
             int sprSize = 48;
             sf::Vector2f boundSize = sprSize*0.333f*sf::Vector2f(2.f, 2.7f);
             bounds = sf::FloatRect(position+boundSize, boundSize);
+            setScale(sf::Vector2f(2.f, 2.f));
             Character::initialise(healthVal, speedVal, position, sprSize, texture);
         }
 
@@ -426,9 +427,10 @@ class Game{
 
     private:
         int screenWidth = 800;
-        int screenHeight = 600;
+        int screenHeight = 608;
         sf::RenderWindow window{sf::VideoMode(screenWidth, screenHeight), "RPG!"};
         Player player;
+        std::vector<Sprite> mapSprites;
         std::vector<DynamicSprite*> dynSprites;
         std::vector<NPC> enemies;
         std::vector<sf::Texture> sheets;
@@ -436,19 +438,63 @@ class Game{
         void loadTextures(){
             sf::Texture playerSheet;
             sf::Texture slimeSheet;
+            sf::Texture grass;
+            sf::Texture plainSheet;
             if(!playerSheet.loadFromFile("sprites/characters/player.png")){
                 throw std::runtime_error("failed to load player sprite!");
             }
             if(!slimeSheet.loadFromFile("sprites/characters/slime.png")){
                 throw std::runtime_error("failed to load slime sprite!");
             }
+            if(!grass.loadFromFile("sprites/tilesets/grass.png")){
+                throw std::runtime_error("failed to load grass texture!");
+            }
+            if(!plainSheet.loadFromFile("sprites/tilesets/plains.png")){
+                throw std::runtime_error("failed to load plains textures!");
+            }
             sheets.push_back(playerSheet);
             sheets.push_back(slimeSheet);
+            sheets.push_back(grass);
+            sheets.push_back(plainSheet);
+        }
+
+        void createMap(){
+            int sprSize = 16;
+            for(int i=0; i<screenWidth/sprSize/2; i++){
+                for(int j=0; j<screenHeight/sprSize/2; j++){
+                    Sprite grassBlock;
+                    grassBlock.initialise(sf::Vector2f(2*sprSize*i, 2*sprSize*j), sprSize, sheets[2]);
+                    grassBlock.setScale(sf::Vector2f(2, 2));
+                    mapSprites.push_back(grassBlock);
+                }
+            }
+
+            for(int i=0; i<screenWidth/sprSize/2; i++){
+                Sprite upperEdgeBlock;
+                Sprite lowerEdgeBlock;
+                Sprite pathBlock;
+                pathBlock.initialise(sf::Vector2f(2*sprSize*i, 2*sprSize*10), sprSize, sheets[3]);
+                pathBlock.setTextureRect(sf::IntRect(sprSize*2,sprSize*1,sprSize,sprSize));
+                pathBlock.setScale(sf::Vector2f(2, 2));
+                mapSprites.push_back(pathBlock);
+                upperEdgeBlock.initialise(sf::Vector2f(2*sprSize*i, 2*sprSize*9), sprSize, sheets[3]);
+                upperEdgeBlock.setTextureRect(sf::IntRect(sprSize*2,sprSize*0,sprSize,sprSize));
+                upperEdgeBlock.setScale(sf::Vector2f(2, 2));
+                mapSprites.push_back(upperEdgeBlock);
+                lowerEdgeBlock.initialise(sf::Vector2f(2*sprSize*i, 2*sprSize*11), sprSize, sheets[3]);
+                lowerEdgeBlock.setTextureRect(sf::IntRect(sprSize*2,sprSize*2,sprSize,sprSize));
+                lowerEdgeBlock.setScale(sf::Vector2f(2, 2));
+                mapSprites.push_back(lowerEdgeBlock);
+            }
+
         }
 
         void setup(){
             loadTextures();
             window.setFramerateLimit(120);
+            window.setVerticalSyncEnabled(true);
+
+            createMap();
             
             player.initialise(100, 200, sf::Vector2f(0.f, 0.f),sheets[0]);
             srand((unsigned) time(NULL));
@@ -573,6 +619,10 @@ class Game{
                 updateDynamicSprites(dt);
 
                 window.clear();
+
+                for(auto & sprite : mapSprites){
+                    window.draw(sprite);
+                }
 
                 for(auto & sprite : dynSprites){
                     window.draw(*sprite);

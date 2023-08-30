@@ -431,6 +431,7 @@ class Game{
         sf::RenderWindow window{sf::VideoMode(screenWidth, screenHeight), "RPG!"};
         Player player;
         std::vector<Sprite> mapSprites;
+        std::vector<Sprite> mapSolidSprites;
         std::vector<DynamicSprite*> dynSprites;
         std::vector<NPC> enemies;
         std::vector<sf::Texture> sheets;
@@ -440,6 +441,7 @@ class Game{
             sf::Texture slimeSheet;
             sf::Texture grass;
             sf::Texture plainSheet;
+            sf::Texture fenceSheet;
             if(!playerSheet.loadFromFile("sprites/characters/player.png")){
                 throw std::runtime_error("failed to load player sprite!");
             }
@@ -452,10 +454,14 @@ class Game{
             if(!plainSheet.loadFromFile("sprites/tilesets/plains.png")){
                 throw std::runtime_error("failed to load plains textures!");
             }
+            if(!fenceSheet.loadFromFile("sprites/tilesets/fences.png")){
+                throw std::runtime_error("failed to load fences textures!");
+            }
             sheets.push_back(playerSheet);
             sheets.push_back(slimeSheet);
             sheets.push_back(grass);
             sheets.push_back(plainSheet);
+            sheets.push_back(fenceSheet);
         }
 
         std::vector<int> splitString(std::string givenStr, char delimiter){
@@ -500,12 +506,43 @@ class Game{
                     if(id==0){
                         block.initialise(sf::Vector2f(2*sprSize*i, 2*sprSize*j), sprSize, sheets[2]);
                     }else{
-                        id -= 1;
+                        id--;
                         block.initialise(sf::Vector2f(2*sprSize*i, 2*sprSize*j), sprSize, sheets[3]);
                         block.setTextureRect(sf::IntRect(sprSize*(id%6),sprSize*(id/6),sprSize,sprSize));
                     }
                     block.setScale(sf::Vector2f(2, 2));
                     mapSprites.push_back(block);
+                    i++;
+                }
+                j++;
+            }
+            map.close();
+        }
+
+        void createSolidMap(){
+            int sprSize = 16;
+            int sprSheetRows = 4;
+            std::ifstream map;
+            map.open("maps/map1_solid.csv");
+            if(map.fail()){
+                throw std::runtime_error("error loading map solid layer file!");
+            }
+            std::string row;
+
+            int j = 0;
+            while(std::getline(map, row)){
+                int i = 0;
+                std::vector<int> ids = splitString(row, ',');
+                for(auto & id : ids){
+                    if(!(id==-1)){
+                        Sprite block;
+                        block.initialise(sf::Vector2f(2*sprSize*i, 2*sprSize*j), sprSize, sheets[4]);
+                        block.setTextureRect(sf::IntRect(sprSize*(id%sprSheetRows),sprSize*(id/sprSheetRows),sprSize,sprSize));
+                        block.setScale(sf::Vector2f(2, 2));
+                        block.bounds=sf::FloatRect(sf::Vector2f(2*sprSize*i, 2*sprSize*j), sf::Vector2f(2*sprSize, 2*sprSize));
+
+                        mapSolidSprites.push_back(block);
+                    }
                     i++;
                 }
                 j++;
@@ -519,6 +556,7 @@ class Game{
             window.setVerticalSyncEnabled(true);
 
             createMap();
+            createSolidMap();
             
             player.initialise(100, 200, sf::Vector2f(0.f, 0.f),sheets[0]);
             srand((unsigned) time(NULL));
@@ -529,7 +567,7 @@ class Game{
             }
         }
 
-        void resolveCollision(DynamicSprite* sprite1, DynamicSprite* sprite2){
+        void resolveDynamicCollision(DynamicSprite* sprite1, DynamicSprite* sprite2){
             sf::FloatRect intersection;
 
             if(sprite1->peekBounds().intersects(sprite2->peekBounds(), intersection)){
@@ -544,6 +582,27 @@ class Game{
                         sprite1->collisionMovement(sf::Vector2f(0.f, intersection.height));
                     }else{
                         sprite1->collisionMovement(-sf::Vector2f(0.f, intersection.height));
+                    }
+                }
+            }
+        }
+
+        void resolveStaticCollision(DynamicSprite* dynSprite, Sprite* staticSprite){
+            sf::FloatRect intersection;
+
+            if(dynSprite->peekBounds().intersects(staticSprite->bounds, intersection)){
+
+                if(intersection.width < intersection.height){
+                    if(staticSprite->bounds.left < dynSprite->peekBounds().left){
+                        dynSprite->collisionMovement(sf::Vector2f(intersection.width, 0.f));
+                    }else{
+                        dynSprite->collisionMovement(-sf::Vector2f(intersection.width, 0.f));
+                    }
+                }else{
+                    if(staticSprite->bounds.top < dynSprite->peekBounds().top){
+                        dynSprite->collisionMovement(sf::Vector2f(0.f, intersection.height));
+                    }else{
+                        dynSprite->collisionMovement(-sf::Vector2f(0.f, intersection.height));
                     }
                 }
             }
@@ -585,11 +644,18 @@ class Game{
                 int j = 0;
                 for(auto & sprite2 : dynSprites){
                     if(j>i){
-                        resolveCollision(sprite1, sprite2);
+                        resolveDynamicCollision(sprite1, sprite2);
                     }
                     j++;
                 }
                 i++;
+            }
+
+            for(auto & dynSprite : dynSprites){
+                for(auto & staticSprite : mapSolidSprites){
+
+                    resolveStaticCollision(dynSprite, &staticSprite);
+                }
             }
 
             for(auto & sprite : dynSprites){
@@ -643,6 +709,10 @@ class Game{
                 window.clear();
 
                 for(auto & sprite : mapSprites){
+                    window.draw(sprite);
+                }
+
+                for(auto & sprite : mapSolidSprites){
                     window.draw(sprite);
                 }
 

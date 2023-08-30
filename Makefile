@@ -1,5 +1,5 @@
 DungeonCrawler: main.cpp
-	g++ -o DungeonCrawler main.cpp -lsfml-graphics -lsfml-window -lsfml-system
+	g++ -o DungeonCrawler src/*.cpp main.cpp -lsfml-graphics -lsfml-window -lsfml-system
 
 .PHONY: test clean
 

@@ -2,420 +2,7 @@
 #include <iostream>
 #include <fstream>
 #include <cmath>
-
-enum Direction {north, northeast, east, southeast, south, southwest, west, northwest, NULLDIR};
-enum State {normal, attackState, hitState, dyingState, deadState};
-
-class Sprite: public sf::Sprite{
-    public:
-        sf::FloatRect bounds;
-
-        virtual void initialise(sf::Vector2f position, int sprSizeVal, sf::Texture& texture){
-            sprSize = sprSizeVal;
-            setTexture(texture);
-            setTextureRect(sf::IntRect(0,0,sprSize,sprSize));
-            setPosition(position);
-        }
-
-        sf::RectangleShape getBoundingShape(){
-            sf::RectangleShape boundingShape;
-            boundingShape.setSize(sf::Vector2f(bounds.width, bounds.height));
-            boundingShape.setPosition(sf::Vector2f(bounds.left, bounds.top));
-            boundingShape.setFillColor(sf::Color::Transparent);
-            boundingShape.setOutlineColor(sf::Color::Red);
-            boundingShape.setOutlineThickness(1);
-            return boundingShape;
-        }
-
-    protected:
-        int sprSize;
-};
-
-class DynamicSprite: public Sprite{
-    public:
-        float speed;
-        bool dead = false;
-
-        virtual void initialise(float speedVal, sf::Vector2f position, bool movableVal, int sprSizeVal, sf::Texture& texture){
-            speed = speedVal;
-            movable = movableVal;
-            Sprite::initialise(position, sprSizeVal, texture);
-        }
-
-        sf::FloatRect peekBounds(){
-            sf::Transform moveMatrix;
-            moveMatrix.translate(movement);
-            return moveMatrix.transformRect(bounds);
-        }
-
-        void collisionMovement(sf::Vector2f moveVector){
-            movement += moveVector;
-        }
-
-        virtual void move(){
-            sf::Transform moveMatrix;
-            moveMatrix.translate(movement);
-            bounds = moveMatrix.transformRect(bounds);
-            sf::Sprite::move(movement);
-        }
-
-        virtual void updateFrame(float dt){
-            throw std::runtime_error("this Character base class function is not meant to be accessed directly!");
-        }
-        
-        virtual void calcMovement(float dt){
-            throw std::runtime_error("this Character base class function is not meant to be accessed directly!");
-        }
-
-
-    protected:
-        float elapsedms = 0;
-        int frame = 0;
-        Direction dir = south;
-        bool moving = false;
-        bool movable = false;
-        sf::Vector2f movement;
-};
-
-class Character: public DynamicSprite{
-    public:
-        int health;
-        bool attacking = false;
-
-
-        virtual void initialise(int healthVal, float speedVal, sf::Vector2f position, int sprSizeVal, sf::Texture& texture){
-            health = healthVal;
-            DynamicSprite::initialise(speedVal, position, true, sprSizeVal, texture);
-        }
-
-        void startDying(){
-            dying = true;
-        }
-
-        void die(){
-            currentState = deadState;
-            dead = true;
-        }
-
-        void wound(int damage){
-            health -= damage;
-
-            if(!dying){
-                if(health < 0){
-                    startDying();
-                }else{
-                    beingHit = true;
-                }
-            }
-        }
-
-    protected:
-        State currentState = normal;
-        bool beingHit = false;
-        bool dying = false;
-};
-
-class NPC: public Character{
-    public:
-        void initialise(int healthVal, float speedVal, sf::Vector2f position, sf::Texture& texture){
-            int sprSize = 32;
-            sf::Vector2f boundSize = sprSize*0.4f*sf::Vector2f(1.7f, 1.9f);
-            bounds = sf::FloatRect(position+boundSize, boundSize);
-            setScale(sf::Vector2f(2.f, 2.f));
-            Character::initialise(healthVal, speedVal, position, 32, texture);
-        }
-
-        void hitAnimate(int& state){
-            int resetFrame = 3;
-
-            if(currentState != hitState){
-                frame = 0;
-                elapsedms = 0;
-                currentState = hitState;
-            }
-
-            if(frame >= resetFrame){
-                frame = 0;
-                state = 0;
-                elapsedms = 0;
-                beingHit = false;
-                currentState = normal;
-            }
-        }
-
-        void deathAnimate(){
-            int resetFrame = 5;
-
-            if(currentState != dyingState){
-                frame = 0;
-                elapsedms = 0;
-                currentState = dyingState;
-            }
-
-            if(frame >= resetFrame){
-                frame = resetFrame;
-                elapsedms = 0;
-                dying = false;
-                die();
-            }
-        }
-
-        void defaultAnimate(){
-            int resetFrame = 4;
-
-            if(frame >= resetFrame){
-                frame = 0;
-                elapsedms = 0;
-            }
-        }
-
-        void updateFrame(float dt){
-            int flipped = 1;
-            int state;
-
-            elapsedms += dt*1e3;
-            frame = ((int)elapsedms)/100;
-
-            if(dying){
-                state = 4;
-                deathAnimate();
-            }else if(beingHit){
-                state = 3;
-                hitAnimate(state);
-            }else{
-                state = 0;
-                defaultAnimate();
-            }
-
-
-            switch(dir){
-                case west:
-                case southwest:
-                case northwest:
-                    flipped = -1;
-                    frame++;
-                    break;
-                default:
-                    flipped = 1;
-                    break;
-            }
-
-            setTextureRect(sf::IntRect(frame*sprSize,state*sprSize,flipped*sprSize,sprSize));
-            
-        }
-
-        void calcMovement(float dt){
-            int random = 0;
-
-            random = rand() % 101;
-
-            sf::Transform translation;
-            sf::Transform rotation;
-            sf::Transform transform;
-            sf::Vector2f unit = dt*speed*sf::Vector2f(1.f, 0.f);
-            movement = sf::Vector2f(0.f, 0.f);
-
-            if(moving){
-                if(random < 20){
-                    moving = false;
-                }
-
-                random = rand() % 101;
-                translation.translate(unit);
-
-                if(random < 13){
-                    rotation.rotate(-45);
-                    dir = northeast;
-                }else if(random < 25){
-                    rotation.rotate(45);
-                    dir = southeast;
-                }else if(random < 37){
-                    dir = east;
-                }else if(random < 50){
-                    rotation.rotate(-135);
-                    dir = northwest;
-                }else if(random < 63){
-                    rotation.rotate(135);
-                    dir = southwest;
-                }else if(random < 75){
-                    rotation.rotate(180);
-                    dir = west;
-                }else if(random < 87){
-                    rotation.rotate(-90);
-                    dir = north;
-                }else{
-                    rotation.rotate(90);
-                    dir = south;
-                }
-
-                transform = rotation*translation;
-                movement = transform*movement;
-
-            }else if(random < 40){
-                moving = true;
-            }
-        }
-};
-
-class Player: public Character{
-    public:
-        void initialise(int healthVal, float speedVal, sf::Vector2f position, sf::Texture& texture){
-            int sprSize = 48;
-            sf::Vector2f boundSize = sprSize*0.333f*sf::Vector2f(2.f, 2.7f);
-            bounds = sf::FloatRect(position+boundSize, boundSize);
-            setScale(sf::Vector2f(2.f, 2.f));
-            Character::initialise(healthVal, speedVal, position, sprSize, texture);
-        }
-
-        void attackAnimate(){
-            int resetFrame = 4;
-
-            if(currentState != attackState){
-                frame = 0;
-                elapsedms = 0;
-                currentState = attackState;
-            }
-
-            if(frame >= resetFrame){
-                frame = 0;
-                elapsedms = 0;
-                attacking = false;
-                currentState = normal;
-            }
-        }
-
-        void defaultAnimate(){
-            int resetFrame = 6;
-
-            if(frame >= resetFrame){
-                frame = 0;
-                elapsedms = 0;
-            }
-        }
-
-        void updateFrame(float dt){
-            int resetFrame = 6;
-            int state = 0;
-            int flipped = 1;
-
-            elapsedms += dt*1e3;
-            frame = ((int)elapsedms)/100;
-
-            if(attacking){
-                state = 6;
-                attackAnimate();
-            }else if(moving){
-                state = 3;
-                defaultAnimate();
-            }else{
-                state = 0;
-                defaultAnimate();
-            }
-
-            switch(dir){
-                case east:
-                case southeast:
-                case northeast:
-                    state += 1;
-                    break;
-                case west:
-                case southwest:
-                case northwest:
-                    state += 1;
-                    flipped = -1;
-                    frame++;
-                    break;
-                case north:
-                    state += 2;
-                    break;
-                default:
-                    state += 0;
-                    break;
-            }
-
-            setTextureRect(sf::IntRect(frame*sprSize,state*sprSize,flipped*sprSize,sprSize));
-        }
-
-        void calcMovement(float dt){
-            sf::Transform translation;
-            sf::Transform rotation;
-            sf::Transform transform;
-            sf::Vector2f unit = dt*speed*sf::Vector2f(1.f, 0.f);
-            movement = sf::Vector2f(0.f, 0.f);
-            bool multikey = false;
-            moving = false;
-
-            if(sf::Keyboard::isKeyPressed(sf::Keyboard::D)){
-                moving = true;
-                translation.translate(unit);
-                if(sf::Keyboard::isKeyPressed(sf::Keyboard::W)){
-                    rotation.rotate(-45);
-                    dir = northeast;
-                    multikey = true;
-                }else if(sf::Keyboard::isKeyPressed(sf::Keyboard::S)){
-                    rotation.rotate(45);
-                    dir = southeast;
-                    multikey = true;
-                }else{
-                    dir = east;
-                }
-            }else if(sf::Keyboard::isKeyPressed(sf::Keyboard::A)){
-                moving = true;
-                translation.translate(unit);
-                if(sf::Keyboard::isKeyPressed(sf::Keyboard::W)){
-                    rotation.rotate(-135);
-                    dir = northwest;
-                    multikey = true;
-                }else if(sf::Keyboard::isKeyPressed(sf::Keyboard::S)){
-                    rotation.rotate(135);
-                    dir = southwest;
-                    multikey = true;
-                }else{
-                    rotation.rotate(180);
-                    dir = west;
-                }
-            }
-
-            if(!multikey){
-                if(sf::Keyboard::isKeyPressed(sf::Keyboard::W)){
-                    moving = true;
-                    translation.translate(unit);
-                    rotation.rotate(-90);
-                    dir = north;
-                }else if(sf::Keyboard::isKeyPressed(sf::Keyboard::S)){
-                    moving = true;
-                    translation.translate(unit);
-                    rotation.rotate(90);
-                    dir = south;
-                }
-            }
-            transform = rotation*translation;
-            movement = transform*movement;
-        }
-        
-        void attack(Character& monster){
-            int weaponDamage = 15;
-            monster.wound(weaponDamage);
-        }
-
-        void attackNearbyEnemies(std::vector<NPC>& enemies){
-            attacking = true;
-
-            for(auto & enemy : enemies){
-                float playerPosX = bounds.left+0.5f*bounds.width;
-                float playerPosY = bounds.top+0.5f*bounds.height;
-                float enemyPosX = enemy.bounds.left+0.5f*enemy.bounds.width;
-                float enemyPosY = enemy.bounds.top+0.5f*enemy.bounds.height;
-
-                float distX = abs(playerPosX - enemyPosX);
-                float distY = abs(playerPosY - enemyPosY);
-
-                if(distX < 1.2f*bounds.width and distY < 1.2f*bounds.height){
-                    attack(enemy);
-                }
-            }
-        }
-};
+#include "src/Player.h"
 
 class Game{
     public:
@@ -433,6 +20,7 @@ class Game{
         std::vector<Sprite> mapSprites;
         std::vector<Sprite> mapSolidSprites;
         std::vector<DynamicSprite*> dynSprites;
+        std::vector<Sprite*> drawSprites;
         std::vector<NPC> enemies;
         std::vector<sf::Texture> sheets;
 
@@ -536,10 +124,28 @@ class Game{
                 for(auto & id : ids){
                     if(!(id==-1)){
                         Sprite block;
-                        block.initialise(sf::Vector2f(2*sprSize*i, 2*sprSize*j), sprSize, sheets[4]);
+                        sf::Vector2f blockPosition = sf::Vector2f(2*sprSize*i, 2*sprSize*j);
+                        sf::Vector2f boundSize = sf::Vector2f(2*sprSize, 2*sprSize);
+                        block.initialise(blockPosition, sprSize, sheets[4]);
                         block.setTextureRect(sf::IntRect(sprSize*(id%sprSheetRows),sprSize*(id/sprSheetRows),sprSize,sprSize));
                         block.setScale(sf::Vector2f(2, 2));
-                        block.bounds=sf::FloatRect(sf::Vector2f(2*sprSize*i, 2*sprSize*j), sf::Vector2f(2*sprSize, 2*sprSize));
+
+                        switch(id){
+                            case 14:
+                                blockPosition += sf::Vector2f(0, 0.5f*sprSize);
+                                boundSize = sf::Vector2f(2*sprSize, sprSize);
+                                break;
+                            case 4:
+                                blockPosition += sf::Vector2f(0.5f*sprSize, 0);
+                                boundSize = sf::Vector2f(sprSize, 2*sprSize);
+                                break;
+                            default:
+                                blockPosition += sf::Vector2f(0.5f*sprSize, 0.5f*sprSize);
+                                boundSize = sf::Vector2f(sprSize, sprSize);
+                                break;
+                        }
+
+                        block.bounds=sf::FloatRect(blockPosition, boundSize);
 
                         mapSolidSprites.push_back(block);
                     }
@@ -676,6 +282,34 @@ class Game{
             }
         }
 
+        void layerSprites(){
+            drawSprites.clear();
+            for(auto & sprite : mapSolidSprites){
+                drawSprites.push_back(&sprite);
+            }
+
+            for(auto & sprite : dynSprites){
+                drawSprites.push_back(sprite);
+            }
+
+            int n = drawSprites.size();
+
+            for(int i = 0; i < n-1; i++){
+                for(int j = 0; j < n-1-i; j++){
+                    Sprite* sprite1 = drawSprites[j];
+                    Sprite* sprite2 = drawSprites[j+1];
+
+                    float sprite1bottom = sprite1->getGlobalBounds().top + sprite1->getGlobalBounds().height;
+                    float sprite2bottom = sprite2->getGlobalBounds().top + sprite2->getGlobalBounds().height;
+
+                    if(sprite2bottom < sprite1bottom){
+
+                        std::swap(drawSprites[j], drawSprites[j+1]);
+                    }
+                }
+            }
+        }
+
         void mainLoop(){
             sf::Clock clock;
 
@@ -705,6 +339,7 @@ class Game{
                 
                 grimReaper();
                 updateDynamicSprites(dt);
+                layerSprites();
 
                 window.clear();
 
@@ -712,11 +347,7 @@ class Game{
                     window.draw(sprite);
                 }
 
-                for(auto & sprite : mapSolidSprites){
-                    window.draw(sprite);
-                }
-
-                for(auto & sprite : dynSprites){
+                for(auto & sprite : drawSprites){
                     window.draw(*sprite);
                 }
 

@@ -138,7 +138,7 @@ void Player::attack(Character& monster){
     monster.wound(weaponDamage);
 }
 
-void Player::attackNearbyEnemies(std::vector<NPC>& enemies){
+void Player::attackNearbyEnemies(std::vector<Enemy>& enemies){
     currentState = attacking;
     startAnimation = true;
 

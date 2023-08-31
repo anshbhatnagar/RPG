@@ -17,11 +17,13 @@ class Game{
         int screenHeight = 608;
         sf::RenderWindow window{sf::VideoMode(screenWidth, screenHeight), "RPG!"};
         Player player;
+        NPC strawHat;
         std::vector<Sprite> mapSprites;
         std::vector<Sprite> mapSolidSprites;
         std::vector<DynamicSprite*> dynSprites;
         std::vector<Sprite*> drawSprites;
-        std::vector<NPC> enemies;
+        std::vector<Enemy> enemies;
+        std::vector<NPC*> NPCs;
         std::vector<sf::Texture> sheets;
 
         void loadTextures(){
@@ -30,6 +32,7 @@ class Game{
             sf::Texture grass;
             sf::Texture plainSheet;
             sf::Texture fenceSheet;
+            sf::Texture strawHatSheet;
             if(!playerSheet.loadFromFile("sprites/characters/player.png")){
                 throw std::runtime_error("failed to load player sprite!");
             }
@@ -45,11 +48,15 @@ class Game{
             if(!fenceSheet.loadFromFile("sprites/tilesets/fences.png")){
                 throw std::runtime_error("failed to load fences textures!");
             }
+            if(!strawHatSheet.loadFromFile("sprites/characters/npc.png")){
+                throw std::runtime_error("failed to load NPC sprite!");
+            }
             sheets.push_back(playerSheet);
             sheets.push_back(slimeSheet);
             sheets.push_back(grass);
             sheets.push_back(plainSheet);
             sheets.push_back(fenceSheet);
+            sheets.push_back(strawHatSheet);
         }
 
         std::vector<int> splitString(std::string givenStr, char delimiter){
@@ -164,10 +171,15 @@ class Game{
             createMap();
             createSolidMap();
             
-            player.initialise(100, 200, sf::Vector2f(0.f, 0.f),sheets[0]);
+            player.initialise(100, 200, sf::Vector2f(0.f, 0.f), sheets[0]);
+
+            strawHat.initialise(100, 50, sf::FloatRect(sf::Vector2f(600.f, 0.f), sf::Vector2f(200.f, 200.f)), sf::Vector2f(700.f, 20.f), sheets[5]);
+
+            NPCs.push_back(&strawHat);
+
             srand((unsigned) time(NULL));
             for(int i=0; i<4; i++){
-                NPC slime;
+                Enemy slime;
                 enemies.push_back(slime);
                 enemies[i].initialise(50, 50, sf::Vector2f(rand() % 500, rand() % 500), sheets[1]);
             }
@@ -234,6 +246,10 @@ class Game{
 
             for(auto & enemy : enemies){
                 dynSprites.push_back(&enemy);
+            }
+
+            for(auto & nonplayer : NPCs){
+                dynSprites.push_back(nonplayer);
             }
         }
 

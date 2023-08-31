@@ -1,12 +1,13 @@
 #pragma once
-#include "Enemy.h"
-#include "NPC.h"
+#include "Character.h"
 
-class Player: public Character{
+class Enemy: public Character{
     public:
         void initialise(int healthVal, float speedVal, sf::Vector2f position, sf::Texture& texture);
 
-        void attackAnimate();
+        void hitAnimate(int& state);
+
+        void deathAnimate();
 
         void defaultAnimate();
 
@@ -14,7 +15,4 @@ class Player: public Character{
 
         void calcMovement(float dt);
         
-        void attack(Character& monster);
-
-        void attackNearbyEnemies(std::vector<Enemy>& enemies);
 };

@@ -9,6 +9,7 @@ void NPC::initialise(int healthVal, float speedVal, sf::FloatRect movableAreaVal
     setScale(sf::Vector2f(2.f, 2.f));
     movableArea = movableAreaVal;
     Character::initialise(healthVal, speedVal, position, sprSize, texture);
+    quest = Quest(2, this);
 }
 
 void NPC::defaultAnimate(){
@@ -161,11 +162,24 @@ void NPC::calcMovement(float dt){
     }
 }
 
-std::string NPC::getDialogue(){
-    if(dialogueTracker < (int)dialogueTree.size()-1){
-        dialogueTracker += 1;
+void NPC::nextDialogue(sf::Text& speech, std::vector<Quest>& questLog){
+    if(questGiven){
+        if(!questLog[0].complete){
+            speech.setString("Hey, you haven't killed those slimes yet!");
+        }else{
+            speech.setString("Brilliant work! You slayed those slimes!");
+        }
+    }else{
+        if(dialogueTracker < (int)dialogueTree.size()-1){
+            dialogueTracker += 1;
+        }
+        speech.setString(dialogueTree[dialogueTracker]);
+
+        if(dialogueTracker == (int)dialogueTree.size()-1){
+            questLog.push_back(quest);
+            questGiven = true;
+        }
     }
-    return dialogueTree[dialogueTracker];
 }
 
 void NPC::stopDialogue(){

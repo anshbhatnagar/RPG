@@ -2,7 +2,7 @@
 #include <iostream>
 #include <fstream>
 #include <cmath>
-#include "src/Player.h"
+#include "src/RPG.h"
 
 enum GameState {running, dialoguing};
 
@@ -33,6 +33,7 @@ class Game{
         std::vector<Enemy> enemies;
         std::vector<NPC*> NPCs;
         std::vector<sf::Texture> sheets;
+        std::vector<Quest> questLog;
 
         void loadResources(){
             sf::Texture playerSheet;
@@ -318,6 +319,9 @@ class Game{
             for(auto & enemy : enemies){
                 if(enemy.dead){
                     enemies.erase(enemies.begin()+i);
+                    for(auto & quest : questLog){
+                        quest.update(1);
+                    }
                 }else{
                     i++;
                 }
@@ -364,7 +368,7 @@ class Game{
                 talkingNPC->talking = true;
                 player.talking = true;
                 uiSprites.push_back(&dialogueBox);
-                speech.setString(talkingNPC->getDialogue());
+                talkingNPC->nextDialogue(speech, questLog);
                 uiSprites.push_back(&speech);
             }
         }
@@ -410,7 +414,7 @@ class Game{
                                 if(gamestate == running){
                                     player.attackNearbyEnemies(enemies);
                                 }else if(gamestate == dialoguing){
-                                    speech.setString(talkingNPC->getDialogue());
+                                    talkingNPC->nextDialogue(speech, questLog);
                                 }
                             }
                             break;

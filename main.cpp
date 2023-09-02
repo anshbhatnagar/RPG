@@ -4,6 +4,8 @@
 #include <cmath>
 #include "src/Player.h"
 
+enum GameState {running, dialoguing};
+
 class Game{
     public:
         void run(){
@@ -13,26 +15,34 @@ class Game{
         }
 
     private:
+        GameState gamestate = running;
         int screenWidth = 800;
         int screenHeight = 608;
         sf::RenderWindow window{sf::VideoMode(screenWidth, screenHeight), "RPG!"};
         Player player;
         NPC strawHat;
+        NPC* talkingNPC;
+        sf::Sprite dialogueBox;
+        sf::Text speech;
+        sf::Font dialogueFont;
         std::vector<Sprite> mapSprites;
         std::vector<Sprite> mapSolidSprites;
         std::vector<DynamicSprite*> dynSprites;
         std::vector<Sprite*> drawSprites;
+        std::vector<sf::Drawable*> uiSprites;
         std::vector<Enemy> enemies;
         std::vector<NPC*> NPCs;
         std::vector<sf::Texture> sheets;
 
-        void loadTextures(){
+        void loadResources(){
             sf::Texture playerSheet;
             sf::Texture slimeSheet;
             sf::Texture grass;
             sf::Texture plainSheet;
             sf::Texture fenceSheet;
             sf::Texture strawHatSheet;
+            sf::Texture dialogueBoxTexture;
+
             if(!playerSheet.loadFromFile("sprites/characters/player.png")){
                 throw std::runtime_error("failed to load player sprite!");
             }
@@ -51,12 +61,20 @@ class Game{
             if(!strawHatSheet.loadFromFile("sprites/characters/npc.png")){
                 throw std::runtime_error("failed to load NPC sprite!");
             }
+            if(!dialogueBoxTexture.loadFromFile("sprites/ui/dialogue.png")){
+                throw std::runtime_error("failed to load dialogue box!");
+            }
             sheets.push_back(playerSheet);
             sheets.push_back(slimeSheet);
             sheets.push_back(grass);
             sheets.push_back(plainSheet);
             sheets.push_back(fenceSheet);
             sheets.push_back(strawHatSheet);
+            sheets.push_back(dialogueBoxTexture);
+
+            if(!dialogueFont.loadFromFile("fonts/Ubuntu-Regular.ttf")){
+                throw std::runtime_error("failed to load dialogue font!");
+            }
         }
 
         std::vector<int> splitString(std::string givenStr, char delimiter){
@@ -164,12 +182,20 @@ class Game{
         }
 
         void setup(){
-            loadTextures();
+            loadResources();
             window.setFramerateLimit(120);
             window.setVerticalSyncEnabled(true);
 
             createMap();
             createSolidMap();
+
+            dialogueBox.setTexture(sheets[6], true);
+            int dialoguePadding = 10;
+            dialogueBox.setPosition(sf::Vector2f(0.5f*(screenWidth-dialogueBox.getGlobalBounds().width), screenHeight - dialogueBox.getGlobalBounds().height - dialoguePadding));
+
+            speech.setFont(dialogueFont);
+            speech.setCharacterSize(15);
+            speech.setPosition(dialogueBox.getPosition() + 2.f*sf::Vector2f((float)dialoguePadding, (float)dialoguePadding));
             
             player.initialise(100, 200, sf::Vector2f(0.f, 0.f), sheets[0]);
 
@@ -326,6 +352,38 @@ class Game{
             }
         }
 
+        void startDialogue(){
+            for(auto & npc : NPCs){
+                if(player.inInteractionDistance(*npc)){
+                    talkingNPC = npc;
+                    gamestate = dialoguing;
+                }
+            }
+
+            if(gamestate == dialoguing){
+                talkingNPC->talking = true;
+                player.talking = true;
+                uiSprites.push_back(&dialogueBox);
+                speech.setString(talkingNPC->getDialogue());
+                uiSprites.push_back(&speech);
+            }
+        }
+
+        void endDialogue(){
+            talkingNPC->stopDialogue();
+            player.talking = false;
+            gamestate = running;
+            uiSprites.clear();
+        }
+
+        void checkDialogue(){
+            if(gamestate == dialoguing){
+                if(!player.inInteractionDistance(*talkingNPC)){
+                    endDialogue();
+                }
+            }
+        }
+
         void mainLoop(){
             sf::Clock clock;
 
@@ -338,9 +396,22 @@ class Game{
                     }
 
                     switch(event.type){
+                        case sf::Event::KeyPressed:
+                            if(event.key.code == sf::Keyboard::E){
+                                if(gamestate == running){
+                                    startDialogue();
+                                }else if(gamestate == dialoguing){
+                                    endDialogue();
+                                }
+                            }
+                            break;
                         case sf::Event::MouseButtonPressed:
                             if(event.mouseButton.button == sf::Mouse::Left){
-                                player.attackNearbyEnemies(enemies);
+                                if(gamestate == running){
+                                    player.attackNearbyEnemies(enemies);
+                                }else if(gamestate == dialoguing){
+                                    speech.setString(talkingNPC->getDialogue());
+                                }
                             }
                             break;
 
@@ -357,6 +428,8 @@ class Game{
                 updateDynamicSprites(dt);
                 layerSprites();
 
+                checkDialogue();
+
                 window.clear();
 
                 for(auto & sprite : mapSprites){
@@ -364,6 +437,10 @@ class Game{
                 }
 
                 for(auto & sprite : drawSprites){
+                    window.draw(*sprite);
+                }
+
+                for(auto & sprite : uiSprites){
                     window.draw(*sprite);
                 }
 

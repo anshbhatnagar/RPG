@@ -4,6 +4,8 @@
 
 class Player: public Character{
     public:
+        bool talking = false;
+        
         void initialise(int healthVal, float speedVal, sf::Vector2f position, sf::Texture& texture);
 
         void attackAnimate();
@@ -13,6 +15,8 @@ class Player: public Character{
         void updateFrame(float dt);
 
         void calcMovement(float dt);
+        
+        bool inInteractionDistance(Sprite& sprite);
         
         void attack(Character& monster);
 

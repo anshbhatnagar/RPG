@@ -74,7 +74,7 @@ void NPC::calcMovement(float dt){
     sf::Vector2f oldMovement = movement;
     movement = sf::Vector2f(0.f, 0.f);
 
-    if(moving && (elapsedMovementSecs > 2 || movement == oldMovement)){
+    if(moving && (elapsedMovementSecs > 2 || movement == oldMovement) && !talking){
         if(random < 50){
             moving = false;
             elapsedMovementSecs = 0;
@@ -150,11 +150,25 @@ void NPC::calcMovement(float dt){
         transform = rotation*translation;
         movement = transform*movement;
 
-    }else if(moving && elapsedMovementSecs < 2){
+    }else if(moving && elapsedMovementSecs < 2 && !talking){
         movement = oldMovement;
 
-    }else if(random < 20 && elapsedMovementSecs > 2){
+    }else if(random < 20 && elapsedMovementSecs > 2 && !talking){
         moving = true;
         elapsedMovementSecs = 0;
+    }else if(talking){
+        moving = false;
     }
+}
+
+std::string NPC::getDialogue(){
+    if(dialogueTracker < (int)dialogueTree.size()-1){
+        dialogueTracker += 1;
+    }
+    return dialogueTree[dialogueTracker];
+}
+
+void NPC::stopDialogue(){
+    talking = false;
+    dialogueTracker = -1;
 }

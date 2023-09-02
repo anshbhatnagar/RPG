@@ -85,52 +85,66 @@ void Player::calcMovement(float dt){
     bool multikey = false;
     moving = false;
 
-    if(sf::Keyboard::isKeyPressed(sf::Keyboard::D)){
-        moving = true;
-        translation.translate(unit);
-        if(sf::Keyboard::isKeyPressed(sf::Keyboard::W)){
-            rotation.rotate(-45);
-            dir = northeast;
-            multikey = true;
-        }else if(sf::Keyboard::isKeyPressed(sf::Keyboard::S)){
-            rotation.rotate(45);
-            dir = southeast;
-            multikey = true;
-        }else{
-            dir = east;
+    if(!talking){
+        if(sf::Keyboard::isKeyPressed(sf::Keyboard::D)){
+            moving = true;
+            translation.translate(unit);
+            if(sf::Keyboard::isKeyPressed(sf::Keyboard::W)){
+                rotation.rotate(-45);
+                dir = northeast;
+                multikey = true;
+            }else if(sf::Keyboard::isKeyPressed(sf::Keyboard::S)){
+                rotation.rotate(45);
+                dir = southeast;
+                multikey = true;
+            }else{
+                dir = east;
+            }
+        }else if(sf::Keyboard::isKeyPressed(sf::Keyboard::A)){
+            moving = true;
+            translation.translate(unit);
+            if(sf::Keyboard::isKeyPressed(sf::Keyboard::W)){
+                rotation.rotate(-135);
+                dir = northwest;
+                multikey = true;
+            }else if(sf::Keyboard::isKeyPressed(sf::Keyboard::S)){
+                rotation.rotate(135);
+                dir = southwest;
+                multikey = true;
+            }else{
+                rotation.rotate(180);
+                dir = west;
+            }
         }
-    }else if(sf::Keyboard::isKeyPressed(sf::Keyboard::A)){
-        moving = true;
-        translation.translate(unit);
-        if(sf::Keyboard::isKeyPressed(sf::Keyboard::W)){
-            rotation.rotate(-135);
-            dir = northwest;
-            multikey = true;
-        }else if(sf::Keyboard::isKeyPressed(sf::Keyboard::S)){
-            rotation.rotate(135);
-            dir = southwest;
-            multikey = true;
-        }else{
-            rotation.rotate(180);
-            dir = west;
-        }
-    }
 
-    if(!multikey){
-        if(sf::Keyboard::isKeyPressed(sf::Keyboard::W)){
-            moving = true;
-            translation.translate(unit);
-            rotation.rotate(-90);
-            dir = north;
-        }else if(sf::Keyboard::isKeyPressed(sf::Keyboard::S)){
-            moving = true;
-            translation.translate(unit);
-            rotation.rotate(90);
-            dir = south;
+        if(!multikey){
+            if(sf::Keyboard::isKeyPressed(sf::Keyboard::W)){
+                moving = true;
+                translation.translate(unit);
+                rotation.rotate(-90);
+                dir = north;
+            }else if(sf::Keyboard::isKeyPressed(sf::Keyboard::S)){
+                moving = true;
+                translation.translate(unit);
+                rotation.rotate(90);
+                dir = south;
+            }
         }
+        transform = rotation*translation;
+        movement = transform*movement;
     }
-    transform = rotation*translation;
-    movement = transform*movement;
+}
+
+bool Player::inInteractionDistance(Sprite& sprite){
+    float playerPosX = bounds.left+0.5f*bounds.width;
+    float playerPosY = bounds.top+0.5f*bounds.height;
+    float spritePosX = sprite.bounds.left+0.5f*sprite.bounds.width;
+    float spritePosY = sprite.bounds.top+0.5f*sprite.bounds.height;
+
+    float distX = abs(playerPosX - spritePosX);
+    float distY = abs(playerPosY - spritePosY);
+
+    return (distX < 1.2f*bounds.width and distY < 1.2f*bounds.height);
 }
 
 void Player::attack(Character& monster){
@@ -143,15 +157,7 @@ void Player::attackNearbyEnemies(std::vector<Enemy>& enemies){
     startAnimation = true;
 
     for(auto & enemy : enemies){
-        float playerPosX = bounds.left+0.5f*bounds.width;
-        float playerPosY = bounds.top+0.5f*bounds.height;
-        float enemyPosX = enemy.bounds.left+0.5f*enemy.bounds.width;
-        float enemyPosY = enemy.bounds.top+0.5f*enemy.bounds.height;
-
-        float distX = abs(playerPosX - enemyPosX);
-        float distY = abs(playerPosY - enemyPosY);
-
-        if(distX < 1.2f*bounds.width and distY < 1.2f*bounds.height){
+        if(inInteractionDistance(enemy)){
             attack(enemy);
         }
     }

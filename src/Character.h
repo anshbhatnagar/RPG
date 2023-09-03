@@ -13,6 +13,9 @@ class Character: public DynamicSprite{
 
         void wound(int damage);
 
+        bool inInteractionDistance(Sprite& sprite);
+
     protected:
+        int frameLength = 100;
         State currentState = normal;
 };

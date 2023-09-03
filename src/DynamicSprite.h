@@ -1,7 +1,7 @@
 #pragma once
 #include "Sprite.h"
 
-enum Direction {north, northeast, east, southeast, south, southwest, west, northwest, NULLDIR};
+enum Direction {east, southeast, south, southwest, west, northwest, north, northeast, NULLDIR};
 
 class DynamicSprite: public Sprite{
     public:

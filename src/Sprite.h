@@ -8,6 +8,7 @@ class Sprite: public sf::Sprite{
         virtual void initialise(sf::Vector2f position, int sprSizeVal, sf::Texture& texture);
 
         sf::RectangleShape getBoundingShapeOutline();
+        sf::Vector2f getRealPosition();
 
     protected:
         int sprSize;

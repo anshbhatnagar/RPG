@@ -17,3 +17,9 @@ sf::RectangleShape Sprite::getBoundingShapeOutline(){
     boundingShape.setOutlineThickness(1);
     return boundingShape;
 }
+
+sf::Vector2f Sprite::getRealPosition(){
+    float posX = bounds.left+0.5f*bounds.width;
+    float posY = bounds.top+0.5f*bounds.height;
+    return sf::Vector2f(posX, posY);
+}

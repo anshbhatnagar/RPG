@@ -8,6 +8,24 @@ void Player::initialise(int healthVal, float speedVal, sf::Vector2f position, sf
     Character::initialise(healthVal, speedVal, position, sprSize, texture);
 }
 
+void Player::deathAnimate(){
+    int resetFrame = 2;
+
+    if(startAnimation){
+        frame = 0;
+        elapsedms = 0;
+        startAnimation = false;
+    }
+
+    if(frame >= resetFrame){
+        frame = resetFrame;
+        elapsedms = resetFrame*frameLength;
+        if(!dead){
+            die();
+        }
+    }
+}
+
 void Player::attackAnimate(){
     int resetFrame = 4;
 
@@ -39,9 +57,12 @@ void Player::updateFrame(float dt){
     int flipped = 1;
 
     elapsedms += dt*1e3;
-    frame = ((int)elapsedms)/100;
+    frame = ((int)elapsedms)/frameLength;
 
-    if(currentState == attacking){
+    if(currentState == dying){
+        state = 9;
+        deathAnimate();
+    }else if(currentState == attacking){
         state = 6;
         attackAnimate();
     }else if(moving){
@@ -51,7 +72,7 @@ void Player::updateFrame(float dt){
         state = 0;
         defaultAnimate();
     }
-
+    
     switch(dir){
         case east:
         case southeast:
@@ -73,6 +94,39 @@ void Player::updateFrame(float dt){
             break;
     }
 
+    if(currentState == dying){
+        state = 9;
+    }
+
+    if(startAnimation){
+        hitms = 0;
+        startAnimation = false;
+    }
+
+    if(currentState == wounding){
+        hitms += dt*1e3;
+        if(((int)hitms)/frameLength % 2 == 0){
+            setColor(sf::Color(255,0,0));
+        }else{
+            setColor(sf::Color(255,255,255));
+        }
+    }
+
+    if(hitms > 4*frameLength){
+        hitms = 0;
+        currentState = normal;
+        setColor(sf::Color(255,255,255));
+    }
+
+    if(dead){
+        state = 9;
+        frame = 2;
+
+        if(flipped = -1){
+            frame++;
+        }
+    }
+
     setTextureRect(sf::IntRect(frame*sprSize,state*sprSize,flipped*sprSize,sprSize));
 }
 
@@ -85,7 +139,7 @@ void Player::calcMovement(float dt){
     bool multikey = false;
     moving = false;
 
-    if(!talking){
+    if(!talking && !dead){
         if(sf::Keyboard::isKeyPressed(sf::Keyboard::D)){
             moving = true;
             translation.translate(unit);
@@ -135,30 +189,20 @@ void Player::calcMovement(float dt){
     }
 }
 
-bool Player::inInteractionDistance(Sprite& sprite){
-    float playerPosX = bounds.left+0.5f*bounds.width;
-    float playerPosY = bounds.top+0.5f*bounds.height;
-    float spritePosX = sprite.bounds.left+0.5f*sprite.bounds.width;
-    float spritePosY = sprite.bounds.top+0.5f*sprite.bounds.height;
-
-    float distX = abs(playerPosX - spritePosX);
-    float distY = abs(playerPosY - spritePosY);
-
-    return (distX < 1.2f*bounds.width and distY < 1.2f*bounds.height);
-}
-
 void Player::attack(Character& monster){
     int weaponDamage = 15;
     monster.wound(weaponDamage);
 }
 
-void Player::attackNearbyEnemies(std::vector<Enemy>& enemies){
-    currentState = attacking;
-    startAnimation = true;
+void Player::attackNearbyEnemies(std::vector<Enemy*>& enemies){
+    if(!dead){
+        currentState = attacking;
+        startAnimation = true;
 
-    for(auto & enemy : enemies){
-        if(inInteractionDistance(enemy)){
-            attack(enemy);
+        for(auto & enemy : enemies){
+            if(inInteractionDistance(*enemy)){
+                attack(*enemy);
+            }
         }
     }
 }

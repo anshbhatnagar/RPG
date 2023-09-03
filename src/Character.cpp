@@ -21,3 +21,9 @@ void Character::wound(int damage){
         }
     }
 }
+
+bool Character::inInteractionDistance(Sprite& sprite){
+    sf::Vector2f dist = getRealPosition() - sprite.getRealPosition();
+
+    return (abs(dist.x) < 1.3f*bounds.width && abs(dist.y) < 1.3f*bounds.height);
+}

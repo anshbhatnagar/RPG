@@ -30,7 +30,9 @@ class Game{
         std::vector<DynamicSprite*> dynSprites;
         std::vector<Sprite*> drawSprites;
         std::vector<sf::Drawable*> uiSprites;
-        std::vector<Enemy> enemies;
+        std::vector<Slime> slimes;
+        std::vector<Skeleton> skeletons;
+        std::vector<Enemy*> enemies;
         std::vector<NPC*> NPCs;
         std::vector<sf::Texture> sheets;
         std::vector<Quest> questLog;
@@ -43,6 +45,7 @@ class Game{
             sf::Texture fenceSheet;
             sf::Texture strawHatSheet;
             sf::Texture dialogueBoxTexture;
+            sf::Texture skeletonSheet;
 
             if(!playerSheet.loadFromFile("sprites/characters/player.png")){
                 throw std::runtime_error("failed to load player sprite!");
@@ -65,6 +68,9 @@ class Game{
             if(!dialogueBoxTexture.loadFromFile("sprites/ui/dialogue.png")){
                 throw std::runtime_error("failed to load dialogue box!");
             }
+            if(!skeletonSheet.loadFromFile("sprites/characters/skeleton.png")){
+                throw std::runtime_error("failed to load skeleton sprite!");
+            }
             sheets.push_back(playerSheet);
             sheets.push_back(slimeSheet);
             sheets.push_back(grass);
@@ -72,6 +78,7 @@ class Game{
             sheets.push_back(fenceSheet);
             sheets.push_back(strawHatSheet);
             sheets.push_back(dialogueBoxTexture);
+            sheets.push_back(skeletonSheet);
 
             if(!dialogueFont.loadFromFile("fonts/Ubuntu-Regular.ttf")){
                 throw std::runtime_error("failed to load dialogue font!");
@@ -206,9 +213,15 @@ class Game{
 
             srand((unsigned) time(NULL));
             for(int i=0; i<4; i++){
-                Enemy slime;
-                enemies.push_back(slime);
-                enemies[i].initialise(50, 50, sf::Vector2f(rand() % 500, rand() % 500), sheets[1]);
+                Slime slime;
+                slime.initialise(sf::Vector2f(rand() % 500, rand() % 500), sheets[1]);
+                slimes.push_back(slime);
+            }
+
+            for(int i=0; i<3; i++){
+                Skeleton skeleton;
+                skeleton.initialise(sf::Vector2f(rand() % 500, 400 + rand() % 200), sheets[7]);
+                skeletons.push_back(skeleton);
             }
         }
 
@@ -272,7 +285,7 @@ class Game{
             dynSprites.push_back(&player);
 
             for(auto & enemy : enemies){
-                dynSprites.push_back(&enemy);
+                dynSprites.push_back(enemy);
             }
 
             for(auto & nonplayer : NPCs){
@@ -314,14 +327,42 @@ class Game{
             }
         }
 
+        void updateEnemies(){
+            enemies.clear();
+
+            for(auto & enemy : slimes){
+                enemies.push_back(&enemy);
+            }
+
+            for(auto & enemy : skeletons){
+                enemy.checkPlayerNearby(player);
+
+                if(!player.dead){
+                    enemy.attackNearbyPlayer(player);
+                }
+                
+                enemies.push_back(&enemy);
+            }
+        }
+
         void grimReaper(){
             int i = 0;
-            for(auto & enemy : enemies){
+            for(auto & enemy : slimes){
                 if(enemy.dead){
-                    enemies.erase(enemies.begin()+i);
+                    slimes.erase(slimes.begin()+i);
                     for(auto & quest : questLog){
                         quest.update(1);
                     }
+                }else{
+                    i++;
+                }
+            }
+
+            i = 0;
+
+            for(auto & enemy : skeletons){
+                if(enemy.dead){
+                    skeletons.erase(skeletons.begin()+i);
                 }else{
                     i++;
                 }
@@ -429,6 +470,7 @@ class Game{
                 dt /= 1e6;
                 
                 grimReaper();
+                updateEnemies();
                 updateDynamicSprites(dt);
                 layerSprites();
 

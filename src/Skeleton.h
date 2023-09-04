@@ -14,12 +14,6 @@ class Skeleton: public Enemy{
         void attackNearbyPlayer(Character& player);
     
     protected:
-        void hitAnimate(int& state);
-
-        void attackAnimate();
-
-        void deathAnimate();
-
         void defaultAnimate(int& state);
 
         void trackMovement(float dt);

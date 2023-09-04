@@ -11,13 +11,12 @@ void Character::die(){
 
 void Character::wound(int damage){
     health -= damage;
-    startAnimation = true;
 
-    if(currentState != dying){
+    if(deathAction.state == PAUSED){
         if(health < 0){
-            currentState = dying;
+            deathAction.start();
         }else{
-            currentState = wounding;
+            hitAction.start();
         }
     }
 }
@@ -25,5 +24,15 @@ void Character::wound(int damage){
 bool Character::inInteractionDistance(Sprite& sprite){
     sf::Vector2f dist = getRealPosition() - sprite.getRealPosition();
 
-    return (abs(dist.x) < 1.3f*bounds.width && abs(dist.y) < 1.3f*bounds.height);
+    return (abs(dist.x) < 1.7f*bounds.width && abs(dist.y) < 1.7f*bounds.height);
+}
+
+void Character::updateActions(float dt){
+    attackAction.update(dt);
+    deathAction.update(dt);
+    hitAction.update(dt);
+
+    if(deathAction.confirmCompletion()){
+        die();
+    }
 }

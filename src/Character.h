@@ -1,7 +1,6 @@
 #pragma once
 #include "DynamicSprite.h"
-
-enum State {normal, attacking, wounding, dying};
+#include "Action.h"
 
 class Character: public DynamicSprite{
     public:
@@ -17,5 +16,9 @@ class Character: public DynamicSprite{
 
     protected:
         int frameLength = 100;
-        State currentState = normal;
+        Action hitAction = Action(0.f);
+        Action deathAction = Action(0.f);
+        Action attackAction = Action(1.f);
+
+        void updateActions(float dt);
 };

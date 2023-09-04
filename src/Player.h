@@ -17,11 +17,5 @@ class Player: public Character{
         void attackNearbyEnemies(std::vector<Enemy*>& enemies);
     
     private:
-        float hitms = 0;
-
-        void attackAnimate();
-
-        void deathAnimate();
-
         void defaultAnimate();
 };

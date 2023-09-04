@@ -10,10 +10,6 @@ class Slime: public Enemy{
         void calcMovement(float dt);
     
     protected:
-        void hitAnimate(int& state);
-
-        void deathAnimate();
-
         void defaultAnimate();
 
 };

@@ -6,41 +6,14 @@ void Slime::initialise(sf::Vector2f position, sf::Texture& texture){
     int speedVal = 50;
     bounds = sf::FloatRect(position+sprSize*1.f*sf::Vector2f(0.7f, 1.f), sprSize*1.f*sf::Vector2f(0.7f, 0.5f));
     setScale(sf::Vector2f(2.f, 2.f));
+
+    deathAction = Action(0.5f);
+    deathAction.addAnimation(4, 5, frameLength, 5*frameLength);
+
+    hitAction = Action(0.3f);
+    hitAction.addAnimation(3, 3, frameLength, 3*frameLength);
+
     Character::initialise(healthVal, speedVal, position, sprSize, texture);
-}
-
-
-void Slime::hitAnimate(int& state){
-    int resetFrame = 3;
-
-    if(startAnimation){
-        frame = 0;
-        elapsedms = 0;
-        startAnimation = false;
-    }
-
-    if(frame >= resetFrame){
-        frame = 0;
-        state = 0;
-        elapsedms = 0;
-        currentState = normal;
-    }
-}
-
-void Slime::deathAnimate(){
-    int resetFrame = 5;
-
-    if(startAnimation){
-        frame = 0;
-        elapsedms = 0;
-        startAnimation = false;
-    }
-
-    if(frame >= resetFrame){
-        frame = resetFrame;
-        elapsedms = 0;
-        die();
-    }
 }
 
 void Slime::defaultAnimate(){
@@ -53,18 +26,20 @@ void Slime::defaultAnimate(){
 }
 
 void Slime::updateFrame(float dt){
+    updateActions(dt);
+
     int flipped = 1;
     int state;
 
     elapsedms += dt*1e3;
     frame = ((int)elapsedms)/frameLength;
 
-    if(currentState == dying){
-        state = 4;
-        deathAnimate();
-    }else if(currentState == wounding){
-        state = 3;
-        hitAnimate(state);
+    if(deathAction.state == RUNNING || dead){
+        state = deathAction.row;
+        frame = deathAction.getFrame();
+    }else if(hitAction.state == RUNNING){
+        state = hitAction.row;
+        frame = hitAction.getFrame();
     }else{
         state = 0;
         defaultAnimate();

@@ -62,11 +62,11 @@ void NPC::updateFrame(float dt){
 }
 
 void NPC::calcMovement(float dt){
+    wanderAction.update(dt);
+
     int random = 0;
 
     random = rand() % 101;
-
-    elapsedMovementSecs += dt;
 
     sf::Transform translation;
     sf::Transform rotation;
@@ -75,10 +75,9 @@ void NPC::calcMovement(float dt){
     sf::Vector2f oldMovement = movement;
     movement = sf::Vector2f(0.f, 0.f);
 
-    if(moving && (elapsedMovementSecs > 2 || movement == oldMovement) && !talking){
+    if(moving && (wanderAction.state != RUNNING || movement == oldMovement) && !talking){
         if(random < 50){
             moving = false;
-            elapsedMovementSecs = 0;
         }
 
         translation.translate(unit);
@@ -151,12 +150,11 @@ void NPC::calcMovement(float dt){
         transform = rotation*translation;
         movement = transform*movement;
 
-    }else if(moving && elapsedMovementSecs < 2 && !talking){
+    }else if(moving && wanderAction.state == RUNNING && !talking){
         movement = oldMovement;
-
-    }else if(random < 20 && elapsedMovementSecs > 2 && !talking){
+    }else if(random < 20 && wanderAction.state != RUNNING && !talking){
         moving = true;
-        elapsedMovementSecs = 0;
+        wanderAction.start();
     }else if(talking){
         moving = false;
     }

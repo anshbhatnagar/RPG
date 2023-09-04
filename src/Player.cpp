@@ -5,41 +5,17 @@ void Player::initialise(int healthVal, float speedVal, sf::Vector2f position, sf
     int sprSize = 48;
     bounds = sf::FloatRect(position+sprSize*1.f*sf::Vector2f(0.66f, 1.4f), sprSize*1.f*sf::Vector2f(0.66f, 0.4f));
     setScale(sf::Vector2f(2.f, 2.f));
+
+    hitAction = Action(0.4f);
+    hitAction.addAnimation(-1, 4, frameLength, 4*frameLength);
+
+    attackAction = Action(0.4f);
+    attackAction.addAnimation(6, 4, frameLength, 4*frameLength);
+
+    deathAction = Action(0.2f);
+    deathAction.addAnimation(9, 2, frameLength, 2*frameLength);
+
     Character::initialise(healthVal, speedVal, position, sprSize, texture);
-}
-
-void Player::deathAnimate(){
-    int resetFrame = 2;
-
-    if(startAnimation){
-        frame = 0;
-        elapsedms = 0;
-        startAnimation = false;
-    }
-
-    if(frame >= resetFrame){
-        frame = resetFrame;
-        elapsedms = resetFrame*frameLength;
-        if(!dead){
-            die();
-        }
-    }
-}
-
-void Player::attackAnimate(){
-    int resetFrame = 4;
-
-    if(startAnimation){
-        frame = 0;
-        elapsedms = 0;
-        startAnimation = false;
-    }
-
-    if(frame >= resetFrame){
-        frame = 0;
-        elapsedms = 0;
-        currentState = normal;
-    }
 }
 
 void Player::defaultAnimate(){
@@ -52,6 +28,8 @@ void Player::defaultAnimate(){
 }
 
 void Player::updateFrame(float dt){
+    updateActions(dt);
+
     int resetFrame = 6;
     int state = 0;
     int flipped = 1;
@@ -59,18 +37,24 @@ void Player::updateFrame(float dt){
     elapsedms += dt*1e3;
     frame = ((int)elapsedms)/frameLength;
 
-    if(currentState == dying){
-        state = 9;
-        deathAnimate();
-    }else if(currentState == attacking){
-        state = 6;
-        attackAnimate();
+    if(deathAction.state == RUNNING || dead){
+        state = deathAction.row;
+        frame = deathAction.getFrame();
+    }if(attackAction.state == RUNNING){
+        state = attackAction.row;
+        frame = attackAction.getFrame();
     }else if(moving){
         state = 3;
         defaultAnimate();
     }else{
         state = 0;
         defaultAnimate();
+    }
+
+    if(hitAction.state == RUNNING && hitAction.getFrame() % 2 == 1){
+        setColor(sf::Color(255,0,0));
+    }else{
+        setColor(sf::Color(255,255,255));
     }
     
     switch(dir){
@@ -94,36 +78,13 @@ void Player::updateFrame(float dt){
             break;
     }
 
-    if(currentState == dying){
-        state = 9;
-    }
-
-    if(startAnimation){
-        hitms = 0;
-        startAnimation = false;
-    }
-
-    if(currentState == wounding){
-        hitms += dt*1e3;
-        if(((int)hitms)/frameLength % 2 == 0){
-            setColor(sf::Color(255,0,0));
-        }else{
-            setColor(sf::Color(255,255,255));
-        }
-    }
-
-    if(hitms > 4*frameLength){
-        hitms = 0;
-        currentState = normal;
-        setColor(sf::Color(255,255,255));
-    }
-
-    if(dead){
-        state = 9;
-        frame = 2;
-
-        if(flipped = -1){
-            frame++;
+    if(deathAction.state == RUNNING || dead){
+        state = deathAction.row;
+        if(dead){
+            frame = 2;
+            if(flipped == -1){
+                frame++;
+            }
         }
     }
 
@@ -196,8 +157,7 @@ void Player::attack(Character& monster){
 
 void Player::attackNearbyEnemies(std::vector<Enemy*>& enemies){
     if(!dead){
-        currentState = attacking;
-        startAnimation = true;
+        attackAction.start();
 
         for(auto & enemy : enemies){
             if(inInteractionDistance(*enemy)){

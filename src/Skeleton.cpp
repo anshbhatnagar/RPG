@@ -6,57 +6,17 @@ void Skeleton::initialise(sf::Vector2f position, sf::Texture& texture){
     int speedVal = 90;
     bounds = sf::FloatRect(position+sprSize*1.f*sf::Vector2f(0.8f, 1.47f), sprSize*1.f*sf::Vector2f(0.3f, 0.2f));
     setScale(sf::Vector2f(2.f, 2.f));
+
+    attackAction = Action(1.f);
+    attackAction.addAnimation(2, 5, frameLength, 4*frameLength);
+
+    deathAction = Action(0.5f);
+    deathAction.addAnimation(4, 5, frameLength, 5*frameLength);
+
+    hitAction = Action(0.3f);
+    hitAction.addAnimation(3, 3, frameLength, 3*frameLength);
+
     Character::initialise(healthVal, speedVal, position, sprSize, texture);
-}
-
-
-void Skeleton::hitAnimate(int& state){
-    int resetFrame = 3;
-
-    if(startAnimation){
-        frame = 0;
-        elapsedms = 0;
-        startAnimation = false;
-    }
-
-    if(frame >= resetFrame){
-        frame = 0;
-        state = 0;
-        elapsedms = 0;
-        currentState = normal;
-    }
-}
-
-void Skeleton::attackAnimate(){
-    int resetFrame = 5;
-
-    if(startAnimation){
-        frame = 0;
-        elapsedms = 0;
-        startAnimation = false;
-    }
-
-    if(frame >= resetFrame){
-        frame = 0;
-        elapsedms = 0;
-        currentState = normal;
-    }
-}
-
-void Skeleton::deathAnimate(){
-    int resetFrame = 5;
-
-    if(startAnimation){
-        frame = 0;
-        elapsedms = 0;
-        startAnimation = false;
-    }
-
-    if(frame >= resetFrame){
-        frame = resetFrame;
-        elapsedms = 0;
-        die();
-    }
 }
 
 void Skeleton::defaultAnimate(int& state){
@@ -73,26 +33,30 @@ void Skeleton::defaultAnimate(int& state){
 }
 
 void Skeleton::updateFrame(float dt){
+    updateActions(dt);
+
     int flipped = 1;
     int state;
 
     elapsedms += dt*1e3;
     frame = ((int)elapsedms)/frameLength;
 
-    if(currentState == dying){
-        state = 4;
-        deathAnimate();
-    }else if(currentState == wounding){
-        state = 3;
-        hitAnimate(state);
-    }else if(currentState == attacking){
-        state = 2;
-        attackAnimate();
+    if(deathAction.state == RUNNING || dead){
+        state = deathAction.row;
+        frame = deathAction.getFrame();
+    }else if(hitAction.state == RUNNING){
+        state = hitAction.row;
+        frame = hitAction.getFrame();
+        if(moving){
+            state += 1;
+        }
+    }else if(attackAction.state == RUNNING){
+        state = attackAction.row;
+        frame = attackAction.getFrame();
     }else{
         state = 0;
         defaultAnimate(state);
     }
-
 
     switch(dir){
         case west:
@@ -140,7 +104,7 @@ void Skeleton::trackMovement(float dt){
         unitVec = rotateUnit*unitVec;
     }
 
-    float avoidDist = 30;
+    float avoidDist = 40;
 
     if(attractionVec.x*attractionVec.x+attractionVec.y*attractionVec.y < avoidDist*avoidDist){
         bestDir = (Direction)((int)bestDir + 2);
@@ -168,15 +132,18 @@ void Skeleton::calcMovement(float dt){
 }
 
 void Skeleton::attack(Character& player){
-    int weaponDamage = 15;
+    int weaponDamage = 25;
     player.wound(weaponDamage);
 }
 
 void Skeleton::attackNearbyPlayer(Character& player){
-    if(inInteractionDistance(player) && currentState != attacking && waitingSecs > 2){
-        currentState = attacking;
-        startAnimation = true;
-        attack(player);
-        waitingSecs = 0;
+    if(inInteractionDistance(player)){
+        attackAction.start();
+    }
+
+    if(attackAction.confirmCompletion()){
+        if(inInteractionDistance(player)){
+            attack(player);
+        }
     }
 }

@@ -4,7 +4,6 @@
 
 class NPC: public Character{
     public:
-        float elapsedMovementSecs = 0;
         bool talking = false;
         sf::FloatRect movableArea;
         Quest quest;
@@ -23,6 +22,7 @@ class NPC: public Character{
         void stopDialogue();
 
     private:
+        Action wanderAction = Action(2.f);
         std::vector<std::string> dialogueTree{"Ah, traveller! Would you like a quest to complete?", "I'll take your silence as a yes!", "Here's a quest:\nKill two slimes and come back to me!"};
         int dialogueTracker = -1;
 };

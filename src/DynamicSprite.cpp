@@ -15,6 +15,10 @@ void DynamicSprite::collisionMovement(sf::Vector2f moveVector){
     movement += moveVector;
 }
 
+void DynamicSprite::die(){
+    dead = true;
+}
+
 void DynamicSprite::move(){
     sf::Transform moveMatrix;
     moveMatrix.translate(movement);

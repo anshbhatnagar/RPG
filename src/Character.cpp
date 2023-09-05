@@ -5,10 +5,6 @@ void Character::initialise(int healthVal, float speedVal, sf::Vector2f position,
     DynamicSprite::initialise(speedVal, position, sprSizeVal, texture);
 }
 
-void Character::die(){
-    dead = true;
-}
-
 void Character::wound(int damage){
     health -= damage;
 

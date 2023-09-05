@@ -32,6 +32,7 @@ class Game{
         std::vector<sf::Drawable*> uiSprites;
         std::vector<Slime> slimes;
         std::vector<Skeleton> skeletons;
+        std::vector<Projectile> projectiles;
         std::vector<Enemy*> enemies;
         std::vector<NPC*> NPCs;
         std::vector<sf::Texture> sheets;
@@ -46,6 +47,7 @@ class Game{
             sf::Texture strawHatSheet;
             sf::Texture dialogueBoxTexture;
             sf::Texture skeletonSheet;
+            sf::Texture fireballSheet;
 
             if(!playerSheet.loadFromFile("sprites/characters/player.png")){
                 throw std::runtime_error("failed to load player sprite!");
@@ -71,6 +73,9 @@ class Game{
             if(!skeletonSheet.loadFromFile("sprites/characters/skeleton.png")){
                 throw std::runtime_error("failed to load skeleton sprite!");
             }
+            if(!fireballSheet.loadFromFile("sprites/projectiles/fireball.png")){
+                throw std::runtime_error("failed to load fireball sprite!");
+            }
             sheets.push_back(playerSheet);
             sheets.push_back(slimeSheet);
             sheets.push_back(grass);
@@ -79,6 +84,7 @@ class Game{
             sheets.push_back(strawHatSheet);
             sheets.push_back(dialogueBoxTexture);
             sheets.push_back(skeletonSheet);
+            sheets.push_back(fireballSheet);
 
             if(!dialogueFont.loadFromFile("fonts/Ubuntu-Regular.ttf")){
                 throw std::runtime_error("failed to load dialogue font!");
@@ -124,57 +130,63 @@ class Game{
         }
 
         void resolveDynamicCollision(DynamicSprite* sprite1, DynamicSprite* sprite2){
-            sf::FloatRect intersection;
+            if(sprite1->solid && sprite2->solid){
+                sf::FloatRect intersection;
 
-            if(sprite1->peekBounds().intersects(sprite2->peekBounds(), intersection)){
-                if(intersection.width < intersection.height){
-                    if(sprite2->peekBounds().left < sprite1->peekBounds().left){
-                        sprite1->collisionMovement(sf::Vector2f(intersection.width, 0.f));
+                if(sprite1->peekBounds().intersects(sprite2->peekBounds(), intersection)){
+                    if(intersection.width < intersection.height){
+                        if(sprite2->peekBounds().left < sprite1->peekBounds().left){
+                            sprite1->collisionMovement(sf::Vector2f(intersection.width, 0.f));
+                        }else{
+                            sprite1->collisionMovement(-sf::Vector2f(intersection.width, 0.f));
+                        }
                     }else{
-                        sprite1->collisionMovement(-sf::Vector2f(intersection.width, 0.f));
-                    }
-                }else{
-                    if(sprite2->peekBounds().top < sprite1->peekBounds().top){
-                        sprite1->collisionMovement(sf::Vector2f(0.f, intersection.height));
-                    }else{
-                        sprite1->collisionMovement(-sf::Vector2f(0.f, intersection.height));
+                        if(sprite2->peekBounds().top < sprite1->peekBounds().top){
+                            sprite1->collisionMovement(sf::Vector2f(0.f, intersection.height));
+                        }else{
+                            sprite1->collisionMovement(-sf::Vector2f(0.f, intersection.height));
+                        }
                     }
                 }
             }
         }
 
         void resolveStaticCollision(DynamicSprite* dynSprite, Sprite* staticSprite){
-            sf::FloatRect intersection;
+            if(dynSprite->solid){
+                sf::FloatRect intersection;
 
-            if(dynSprite->peekBounds().intersects(staticSprite->bounds, intersection)){
+                if(dynSprite->peekBounds().intersects(staticSprite->bounds, intersection)){
 
-                if(intersection.width < intersection.height){
-                    if(staticSprite->bounds.left < dynSprite->peekBounds().left){
-                        dynSprite->collisionMovement(sf::Vector2f(intersection.width, 0.f));
+                    if(intersection.width < intersection.height){
+                        if(staticSprite->bounds.left < dynSprite->peekBounds().left){
+                            dynSprite->collisionMovement(sf::Vector2f(intersection.width, 0.f));
+                        }else{
+                            dynSprite->collisionMovement(-sf::Vector2f(intersection.width, 0.f));
+                        }
                     }else{
-                        dynSprite->collisionMovement(-sf::Vector2f(intersection.width, 0.f));
-                    }
-                }else{
-                    if(staticSprite->bounds.top < dynSprite->peekBounds().top){
-                        dynSprite->collisionMovement(sf::Vector2f(0.f, intersection.height));
-                    }else{
-                        dynSprite->collisionMovement(-sf::Vector2f(0.f, intersection.height));
+                        if(staticSprite->bounds.top < dynSprite->peekBounds().top){
+                            dynSprite->collisionMovement(sf::Vector2f(0.f, intersection.height));
+                        }else{
+                            dynSprite->collisionMovement(-sf::Vector2f(0.f, intersection.height));
+                        }
                     }
                 }
             }
         }
 
         void keepOnScreen(DynamicSprite* sprite){
-            if(sprite->peekBounds().top < 0){
-                sprite->collisionMovement(-sf::Vector2f(0.f, sprite->peekBounds().top));
-            }else if(sprite->peekBounds().top + sprite->peekBounds().height > screenHeight){
-                sprite->collisionMovement(-sf::Vector2f(0.f, sprite->peekBounds().top + sprite->peekBounds().height-screenHeight));
-            }
+            if(sprite->solid){
+                if(sprite->peekBounds().top < 0){
+                    sprite->collisionMovement(-sf::Vector2f(0.f, sprite->peekBounds().top));
+                }else if(sprite->peekBounds().top + sprite->peekBounds().height > screenHeight){
+                    sprite->collisionMovement(-sf::Vector2f(0.f, sprite->peekBounds().top + sprite->peekBounds().height-screenHeight));
+                }
 
-            if(sprite->peekBounds().left < 0){
-                sprite->collisionMovement(-sf::Vector2f(sprite->peekBounds().left, 0.f));
-            }else if(sprite->peekBounds().left + sprite->peekBounds().width > screenWidth){
-                sprite->collisionMovement(-sf::Vector2f(sprite->peekBounds().left + sprite->peekBounds().width-screenWidth, 0.f));
+                if(sprite->peekBounds().left < 0){
+                    sprite->collisionMovement(-sf::Vector2f(sprite->peekBounds().left, 0.f));
+                }else if(sprite->peekBounds().left + sprite->peekBounds().width > screenWidth){
+                    sprite->collisionMovement(-sf::Vector2f(sprite->peekBounds().left + sprite->peekBounds().width-screenWidth, 0.f));
+                }
             }
         }
 
@@ -188,6 +200,10 @@ class Game{
 
             for(auto & nonplayer : NPCs){
                 dynSprites.push_back(nonplayer);
+            }
+
+            for(auto & projectile : projectiles){
+                dynSprites.push_back(&projectile);
             }
         }
 
@@ -265,6 +281,16 @@ class Game{
                     i++;
                 }
             }
+
+            i = 0;
+
+            for(auto & projectile : projectiles){
+                if(projectile.dead){
+                    projectiles.erase(projectiles.begin()+i);
+                }else{
+                    i++;
+                }
+            }
         }
 
         void layerSprites(){
@@ -327,6 +353,16 @@ class Game{
             }
         }
 
+        void checkProjectiles(){
+            for(auto & proj : projectiles){
+                for(auto & enemy : enemies){
+                    if(proj.bounds.intersects(enemy->bounds)){
+                        proj.dealDamage(enemy);
+                    }
+                }
+            }
+        }
+
         void mainLoop(){
             sf::Clock clock;
 
@@ -345,6 +381,15 @@ class Game{
                                     startDialogue();
                                 }else if(gamestate == dialoguing){
                                     endDialogue();
+                                }
+                            }else if(event.key.code == sf::Keyboard::F){
+                                if(gamestate == running){
+                                    sf::Vector2f mouseRelPos = sf::Vector2f(sf::Mouse::getPosition(window)) - player.getRealPosition();
+                                    sf::Transform rotation;
+                                    float PI = 3.14159f;
+                                    float angle = (180./PI)*atan2(mouseRelPos.y,mouseRelPos.x);
+                                    Projectile fireball = Projectile(angle, player.getRealPosition()+sf::Vector2f(0.f,-5.f),sheets[8]);
+                                    projectiles.push_back(fireball);
                                 }
                             }
                             break;
@@ -373,6 +418,7 @@ class Game{
                 layerSprites();
 
                 checkDialogue();
+                checkProjectiles();
 
                 window.clear();
 

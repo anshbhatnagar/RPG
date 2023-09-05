@@ -6,6 +6,7 @@ enum Direction {east, southeast, south, southwest, west, northwest, north, north
 class DynamicSprite: public Sprite{
     public:
         float speed;
+        bool solid = true;
         bool dead = false;
 
         virtual void initialise(float speedVal, sf::Vector2f position, int sprSizeVal, sf::Texture& texture);
@@ -14,6 +15,8 @@ class DynamicSprite: public Sprite{
 
         void collisionMovement(sf::Vector2f moveVector);
 
+        void die();
+
         virtual void move();
 
         virtual void updateFrame(float dt);
@@ -21,6 +24,7 @@ class DynamicSprite: public Sprite{
         virtual void calcMovement(float dt);
 
     protected:
+        int frameLength = 100;
         float elapsedms = 0;
         int frame = 0;
         Direction dir = south;

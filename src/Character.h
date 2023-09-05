@@ -8,14 +8,11 @@ class Character: public DynamicSprite{
 
         virtual void initialise(int healthVal, float speedVal, sf::Vector2f position, int sprSizeVal, sf::Texture& texture);
 
-        void die();
-
         void wound(int damage);
 
         bool inInteractionDistance(Sprite& sprite);
 
     protected:
-        int frameLength = 100;
         Action hitAction = Action(0.f);
         Action deathAction = Action(0.f);
         Action attackAction = Action(1.f);

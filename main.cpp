@@ -198,6 +198,7 @@ class Game{
             createSolidMap();
 
             dialogueBox.setTexture(sheets[6], true);
+            dialogueBox.setScale(sf::Vector2f(2.f, 2.f));
             int dialoguePadding = 10;
             dialogueBox.setPosition(sf::Vector2f(0.5f*(screenWidth-dialogueBox.getGlobalBounds().width), screenHeight - dialogueBox.getGlobalBounds().height - dialoguePadding));
 

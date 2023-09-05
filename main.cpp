@@ -85,117 +85,14 @@ class Game{
             }
         }
 
-        std::vector<int> splitString(std::string givenStr, char delimiter){
-            int i = 0;
-            int j = 0;
-            std::string tempStr;
-            std::vector<int> elements;
-
-            for(auto & stringChar : givenStr){
-                if(stringChar == ','){
-                    if(tempStr == ""){
-                        throw std::runtime_error("error reading map file!");
-                    }
-                    elements.push_back(std::stoi(tempStr));
-                    tempStr = "";
-                    j=0;
-                }else{
-                    tempStr += stringChar;
-                    i++;
-                    j++;
-                }
-            }
-            elements.push_back(std::stoi(tempStr));
-            return elements;
-        }
-
-        void createMap(){
-            int sprSize = 16;
-            std::ifstream map;
-            map.open("maps/map1.csv");
-            if(map.fail()){
-                throw std::runtime_error("error loading map file!");
-            }
-            std::string row;
-
-            int j = 0;
-            while(std::getline(map, row)){
-                int i = 0;
-                std::vector<int> ids = splitString(row, ',');
-                for(auto & id : ids){
-                    Sprite block;
-                    if(id==0){
-                        block.initialise(sf::Vector2f(2*sprSize*i, 2*sprSize*j), sprSize, sheets[2]);
-                    }else{
-                        id--;
-                        block.initialise(sf::Vector2f(2*sprSize*i, 2*sprSize*j), sprSize, sheets[3]);
-                        block.setTextureRect(sf::IntRect(sprSize*(id%6),sprSize*(id/6),sprSize,sprSize));
-                    }
-                    block.setScale(sf::Vector2f(2, 2));
-                    mapSprites.push_back(block);
-                    i++;
-                }
-                j++;
-            }
-            map.close();
-        }
-
-        void createSolidMap(){
-            int sprSize = 16;
-            int sprSheetRows = 4;
-            std::ifstream map;
-            map.open("maps/map1_solid.csv");
-            if(map.fail()){
-                throw std::runtime_error("error loading map solid layer file!");
-            }
-            std::string row;
-
-            int j = 0;
-            while(std::getline(map, row)){
-                int i = 0;
-                std::vector<int> ids = splitString(row, ',');
-                for(auto & id : ids){
-                    if(!(id==-1)){
-                        Sprite block;
-                        sf::Vector2f blockPosition = sf::Vector2f(2*sprSize*i, 2*sprSize*j);
-                        sf::Vector2f boundSize = sf::Vector2f(2*sprSize, 2*sprSize);
-                        block.initialise(blockPosition, sprSize, sheets[4]);
-                        block.setTextureRect(sf::IntRect(sprSize*(id%sprSheetRows),sprSize*(id/sprSheetRows),sprSize,sprSize));
-                        block.setScale(sf::Vector2f(2, 2));
-
-                        switch(id){
-                            case 14:
-                                blockPosition += sf::Vector2f(0, 0.5f*sprSize);
-                                boundSize = sf::Vector2f(2*sprSize, sprSize);
-                                break;
-                            case 4:
-                                blockPosition += sf::Vector2f(0.5f*sprSize, 0);
-                                boundSize = sf::Vector2f(sprSize, 2*sprSize);
-                                break;
-                            default:
-                                blockPosition += sf::Vector2f(0.5f*sprSize, 0.5f*sprSize);
-                                boundSize = sf::Vector2f(sprSize, sprSize);
-                                break;
-                        }
-
-                        block.bounds=sf::FloatRect(blockPosition, boundSize);
-
-                        mapSolidSprites.push_back(block);
-                    }
-                    i++;
-                }
-                j++;
-            }
-            map.close();
-        }
-
         void setup(){
             loadResources();
             window.setFramerateLimit(120);
             window.setVerticalSyncEnabled(true);
 
-            createMap();
-            createSolidMap();
+            MapHandler map = MapHandler("maps/map1.json", 16, 25, 19);
+
+            map.loadMap(mapSprites, mapSolidSprites, sheets);
 
             dialogueBox.setTexture(sheets[6], true);
             dialogueBox.setScale(sf::Vector2f(2.f, 2.f));

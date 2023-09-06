@@ -1,6 +1,7 @@
 #include "Projectile.h"
 
 Projectile::Projectile(float angle, sf::Vector2f initialPos, sf::Texture& texture){
+    sprSize = 16;
     float speed = 300.f;
     rotation.rotate(angle);
     setRotation(angle);
@@ -11,7 +12,7 @@ Projectile::Projectile(float angle, sf::Vector2f initialPos, sf::Texture& textur
     setScale(2.f*sf::Vector2f(1.f, 1.f));
     setOrigin(sf::Vector2f(8,8));
     bounds = sf::FloatRect(initialPos-sf::Vector2f(8,8), sprSize*1.f*sf::Vector2f(1.f, 1.f));
-    DynamicSprite::initialise(speed, initialPos, 16, texture);
+    DynamicSprite::initialise(speed, initialPos, sprSize, texture);
 }
         
 void Projectile::dealDamage(Character* victim){

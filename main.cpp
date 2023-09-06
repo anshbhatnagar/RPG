@@ -6,10 +6,10 @@
 
 enum GameState {running, dialoguing};
 
-class HealthBar: public sf::Sprite{
+class InterfaceBar: public sf::Sprite{
     public:
-        void initialise(float health, sf::Texture& texture, sf::Vector2f position){
-            playerHealth = health;
+        void initialise(float value, sf::Texture& texture, sf::Vector2f position){
+            playerValue = value;
             bar.create(50,10);
             bar.clear();
             base.setTexture(texture);
@@ -18,28 +18,34 @@ class HealthBar: public sf::Sprite{
             life.setTextureRect(sf::IntRect(0,10,50,10));
             border.setTexture(texture);
             border.setTextureRect(sf::IntRect(0,20,50,10));
+            mask = sf::RectangleShape(sf::Vector2f(50.f,10.f));
+            mask.setFillColor(sf::Color::Transparent);
+            mask.setPosition(sf::Vector2f(life.getPosition().x + life.getGlobalBounds().width, 0.f));
             setScale(sf::Vector2f(2.f, 2.f));
             setPosition(position);
-            update(health);
+            update(playerValue);
         }
 
-        void update(float health){
-            life.setPosition(sf::Vector2f((health-playerHealth)/2.f, 0));
+        void update(float value){
+            life.setPosition(sf::Vector2f((value-playerValue)/2.f, 0));
+            mask.setPosition(sf::Vector2f(life.getPosition().x + life.getGlobalBounds().width+1.f, 0.f));
             bar.clear(sf::Color::Transparent);
             bar.draw(base);
             bar.draw(life, baseAlpha);
+            bar.draw(mask, sf::BlendNone);
             bar.draw(border);
             bar.display();
             setTexture(bar.getTexture());
         }
     
     private:
-        float playerHealth;
+        float playerValue;
         sf::RenderTexture bar;
         sf::Sprite base;
         sf::Sprite life;
         sf::BlendMode baseAlpha = sf::BlendMode(sf::BlendMode::One, sf::BlendMode::Zero, sf::BlendMode::Add, sf::BlendMode::Zero, sf::BlendMode::One, sf::BlendMode::Add);
         sf::Sprite border;
+        sf::RectangleShape mask;
 };
 
 class Game{
@@ -56,10 +62,11 @@ class Game{
         int screenHeight = 608;
         sf::RenderWindow window{sf::VideoMode(screenWidth, screenHeight), "RPG!"};
         Player player;
+        InterfaceBar healthBar;
+        InterfaceBar manaBar;
         NPC strawHat;
         NPC* talkingNPC;
         sf::Sprite dialogueBox;
-        HealthBar healthBar;
         sf::Text speech;
         sf::Font dialogueFont;
         std::vector<Sprite> mapSprites;
@@ -86,6 +93,7 @@ class Game{
             sf::Texture skeletonSheet;
             sf::Texture fireballSheet;
             sf::Texture healthBarSheet;
+            sf::Texture manaBarSheet;
 
             if(!playerSheet.loadFromFile("sprites/characters/player.png")){
                 throw std::runtime_error("failed to load player sprite!");
@@ -117,6 +125,9 @@ class Game{
             if(!healthBarSheet.loadFromFile("sprites/ui/healthbar.png")){
                 throw std::runtime_error("failed to load health bar!");
             }
+            if(!manaBarSheet.loadFromFile("sprites/ui/manabar.png")){
+                throw std::runtime_error("failed to load mana bar!");
+            }
             sheets.push_back(playerSheet);
             sheets.push_back(slimeSheet);
             sheets.push_back(grass);
@@ -127,6 +138,7 @@ class Game{
             sheets.push_back(skeletonSheet);
             sheets.push_back(fireballSheet);
             sheets.push_back(healthBarSheet);
+            sheets.push_back(manaBarSheet);
 
             if(!dialogueFont.loadFromFile("fonts/Ubuntu-Regular.ttf")){
                 throw std::runtime_error("failed to load dialogue font!");
@@ -155,6 +167,8 @@ class Game{
 
             healthBar.initialise(player.health, sheets[9], sf::Vector2f(20.f, 20.f));
             uiSprites.push_back(&healthBar);
+            manaBar.initialise(player.health, sheets[10], sf::Vector2f(20.f, 40.f));
+            uiSprites.push_back(&manaBar);
 
             strawHat.initialise(100, 50, sf::FloatRect(sf::Vector2f(600.f, 0.f), sf::Vector2f(200.f, 200.f)), sf::Vector2f(700.f, 20.f), sheets[5]);
 
@@ -389,6 +403,7 @@ class Game{
             gamestate = running;
             uiSprites.clear();
             uiSprites.push_back(&healthBar);
+            uiSprites.push_back(&manaBar);
         }
 
         void checkDialogue(){
@@ -428,14 +443,12 @@ class Game{
                                 }else if(gamestate == dialoguing){
                                     endDialogue();
                                 }
-                            }else if(event.key.code == sf::Keyboard::F){
+                            }
+                            break;
+                        case sf::Event::KeyReleased:
+                            if(event.key.code == sf::Keyboard::F){
                                 if(gamestate == running){
-                                    sf::Vector2f mouseRelPos = sf::Vector2f(sf::Mouse::getPosition(window)) - player.getRealPosition();
-                                    sf::Transform rotation;
-                                    float PI = 3.14159f;
-                                    float angle = (180./PI)*atan2(mouseRelPos.y,mouseRelPos.x);
-                                    Projectile fireball = Projectile(angle, player.getRealPosition()+sf::Vector2f(0.f,-5.f),sheets[8]);
-                                    projectiles.push_back(fireball);
+                                    player.fireFireball(projectiles, window, sheets);
                                 }
                             }
                             break;
@@ -462,6 +475,7 @@ class Game{
                 updateEnemies();
                 updateDynamicSprites(dt);
                 healthBar.update(player.health);
+                manaBar.update(player.mana);
                 layerSprites();
 
                 checkDialogue();

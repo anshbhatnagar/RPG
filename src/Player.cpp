@@ -27,6 +27,11 @@ void Player::defaultAnimate(){
     }
 }
 
+void Player::updateActions(float dt){
+    magicCooldown.update(dt);
+    Character::updateActions(dt);
+}
+
 void Player::updateFrame(float dt){
     updateActions(dt);
 
@@ -164,5 +169,20 @@ void Player::attackNearbyEnemies(std::vector<Enemy*>& enemies){
                 attack(*enemy);
             }
         }
+    }
+}
+
+void Player::fireFireball(std::vector<Projectile>& projectiles, sf::RenderWindow& window, std::vector<sf::Texture>& sheets){
+    int fireballCost = 20;
+
+    if(mana >= fireballCost && magicCooldown.state != RUNNING){
+        magicCooldown.start();
+        mana -= fireballCost;
+        sf::Vector2f mouseRelPos = sf::Vector2f(sf::Mouse::getPosition(window)) - getRealPosition();
+        sf::Transform rotation;
+        float PI = 3.14159f;
+        float angle = (180./PI)*atan2(mouseRelPos.y,mouseRelPos.x);
+        Projectile fireball = Projectile(angle, getRealPosition()+sf::Vector2f(0.f,-5.f),sheets[8]);
+        projectiles.push_back(fireball);
     }
 }

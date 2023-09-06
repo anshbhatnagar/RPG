@@ -6,6 +6,42 @@
 
 enum GameState {running, dialoguing};
 
+class HealthBar: public sf::Sprite{
+    public:
+        void initialise(float health, sf::Texture& texture, sf::Vector2f position){
+            playerHealth = health;
+            bar.create(50,10);
+            bar.clear();
+            base.setTexture(texture);
+            base.setTextureRect(sf::IntRect(0,0,50,10));
+            life.setTexture(texture);
+            life.setTextureRect(sf::IntRect(0,10,50,10));
+            border.setTexture(texture);
+            border.setTextureRect(sf::IntRect(0,20,50,10));
+            setScale(sf::Vector2f(2.f, 2.f));
+            setPosition(position);
+            update(health);
+        }
+
+        void update(float health){
+            life.setPosition(sf::Vector2f((health-playerHealth)/2.f, 0));
+            bar.clear(sf::Color::Transparent);
+            bar.draw(base);
+            bar.draw(life, baseAlpha);
+            bar.draw(border);
+            bar.display();
+            setTexture(bar.getTexture());
+        }
+    
+    private:
+        float playerHealth;
+        sf::RenderTexture bar;
+        sf::Sprite base;
+        sf::Sprite life;
+        sf::BlendMode baseAlpha = sf::BlendMode(sf::BlendMode::One, sf::BlendMode::Zero, sf::BlendMode::Add, sf::BlendMode::Zero, sf::BlendMode::One, sf::BlendMode::Add);
+        sf::Sprite border;
+};
+
 class Game{
     public:
         void run(){
@@ -23,6 +59,7 @@ class Game{
         NPC strawHat;
         NPC* talkingNPC;
         sf::Sprite dialogueBox;
+        HealthBar healthBar;
         sf::Text speech;
         sf::Font dialogueFont;
         std::vector<Sprite> mapSprites;
@@ -48,6 +85,7 @@ class Game{
             sf::Texture dialogueBoxTexture;
             sf::Texture skeletonSheet;
             sf::Texture fireballSheet;
+            sf::Texture healthBarSheet;
 
             if(!playerSheet.loadFromFile("sprites/characters/player.png")){
                 throw std::runtime_error("failed to load player sprite!");
@@ -76,6 +114,9 @@ class Game{
             if(!fireballSheet.loadFromFile("sprites/projectiles/fireball.png")){
                 throw std::runtime_error("failed to load fireball sprite!");
             }
+            if(!healthBarSheet.loadFromFile("sprites/ui/healthbar.png")){
+                throw std::runtime_error("failed to load health bar!");
+            }
             sheets.push_back(playerSheet);
             sheets.push_back(slimeSheet);
             sheets.push_back(grass);
@@ -85,6 +126,7 @@ class Game{
             sheets.push_back(dialogueBoxTexture);
             sheets.push_back(skeletonSheet);
             sheets.push_back(fireballSheet);
+            sheets.push_back(healthBarSheet);
 
             if(!dialogueFont.loadFromFile("fonts/Ubuntu-Regular.ttf")){
                 throw std::runtime_error("failed to load dialogue font!");
@@ -110,6 +152,9 @@ class Game{
             speech.setPosition(dialogueBox.getPosition() + 2.f*sf::Vector2f((float)dialoguePadding, (float)dialoguePadding));
             
             player.initialise(100, 200, sf::Vector2f(0.f, 0.f), sheets[0]);
+
+            healthBar.initialise(player.health, sheets[9], sf::Vector2f(20.f, 20.f));
+            uiSprites.push_back(&healthBar);
 
             strawHat.initialise(100, 50, sf::FloatRect(sf::Vector2f(600.f, 0.f), sf::Vector2f(200.f, 200.f)), sf::Vector2f(700.f, 20.f), sheets[5]);
 
@@ -343,6 +388,7 @@ class Game{
             player.talking = false;
             gamestate = running;
             uiSprites.clear();
+            uiSprites.push_back(&healthBar);
         }
 
         void checkDialogue(){
@@ -415,6 +461,7 @@ class Game{
                 grimReaper();
                 updateEnemies();
                 updateDynamicSprites(dt);
+                healthBar.update(player.health);
                 layerSprites();
 
                 checkDialogue();

@@ -9,7 +9,7 @@ void Character::wound(int damage){
     health -= damage;
 
     if(deathAction.state == PAUSED){
-        if(health < 0){
+        if(health <= 0){
             deathAction.start();
         }else{
             hitAction.start();

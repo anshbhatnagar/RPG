@@ -1,15 +1,18 @@
 #pragma once
 #include "Character.h"
 #include "Quest.h"
+#include <fstream>
+#include <nlohmann/json.hpp>
+#include <cmath>
+
+using json = nlohmann::json;
 
 class NPC: public Character{
     public:
         bool talking = false;
         sf::FloatRect movableArea;
-        Quest quest;
-        bool questGiven = false;
 
-        void initialise(int healthVal, float speedVal, sf::FloatRect movableAreaVal, sf::Vector2f position, sf::Texture& texture);
+        void initialise(std::string npcFileName, std::vector<sf::Texture>& sheets);
 
         void defaultAnimate();
 
@@ -17,12 +20,13 @@ class NPC: public Character{
 
         void calcMovement(float dt);
 
-        void nextDialogue(sf::Text& speech, std::vector<Quest>& questLog);
+        std::string nextDialogue(std::vector<Quest>& questLog, Character& player);
 
         void stopDialogue();
 
     private:
+        std::string name;
+        json npcData;
+        json dialogueTree;
         Action wanderAction = Action(2.f);
-        std::vector<std::string> dialogueTree{"Ah, traveller! Would you like a quest to complete?", "I'll take your silence as a yes!", "Here's a quest:\nKill two slimes and come back to me!"};
-        int dialogueTracker = -1;
 };

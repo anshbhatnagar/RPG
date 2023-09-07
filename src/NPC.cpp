@@ -1,15 +1,30 @@
 #include "NPC.h"
-#include <cmath>
 
 const float PI = 3.14159;
 
-void NPC::initialise(int healthVal, float speedVal, sf::FloatRect movableAreaVal, sf::Vector2f position, sf::Texture& texture){
-    int sprSize = 48;
+void NPC::initialise(std::string npcFileName, std::vector<sf::Texture>& sheets){
+    npcData = misc::readFile(npcFileName, "NPC");
+
+    name = npcData["name"].get<std::string>();
+
+    int sprSize = npcData["sprite_size"].get<int>();
+
+    sf::Vector2f position = sf::Vector2f(npcData["coords"][0].get<float>(), npcData["coords"][1].get<float>());
+
     bounds = sf::FloatRect(position+sprSize*1.f*sf::Vector2f(0.66f, 1.4f), sprSize*1.f*sf::Vector2f(0.66f, 0.4f));
+
     setScale(sf::Vector2f(2.f, 2.f));
-    movableArea = movableAreaVal;
-    Character::initialise(healthVal, speedVal, position, sprSize, texture);
-    quest = Quest(2, this);
+
+    json confinement = npcData["confinement"];
+    dialogueTree = npcData["dialogue_tree"];
+
+    movableArea = sf::FloatRect(sf::Vector2f(confinement["position"][0].get<float>(), confinement["position"][1].get<float>()), sf::Vector2f(confinement["size"][0].get<float>(), confinement["size"][1].get<float>()));
+
+    int healthVal = npcData["health"].get<int>();
+    int speedVal = npcData["speed"].get<int>();
+    int sheetID = npcData["sheet_ID"].get<int>();
+
+    Character::initialise(healthVal, speedVal, position, sprSize, sheets[sheetID]);
 }
 
 void NPC::defaultAnimate(){
@@ -160,27 +175,77 @@ void NPC::calcMovement(float dt){
     }
 }
 
-void NPC::nextDialogue(sf::Text& speech, std::vector<Quest>& questLog){
-    if(questGiven){
-        if(!questLog[0].complete){
-            speech.setString("Hey, you haven't killed those slimes yet!");
-        }else{
-            speech.setString("Brilliant work! You slayed those slimes!");
-        }
+std::string NPC::nextDialogue(std::vector<Quest>& questLog, Character& player){
+    
+    if(dialogueTree.is_null()){
+        return "";
     }else{
-        if(dialogueTracker < (int)dialogueTree.size()-1){
-            dialogueTracker += 1;
-        }
-        speech.setString(dialogueTree[dialogueTracker]);
+        for(int i = 0; i < dialogueTree.size(); i++){
+            json dialogue = dialogueTree[i];
+            DialogueType type = misc::map_DialogueType(dialogue["type"].get<std::string>());
 
-        if(dialogueTracker == (int)dialogueTree.size()-1){
-            questLog.push_back(quest);
-            questGiven = true;
+            switch(type){
+                case CONDITION:{
+                    TestType test = misc::map_TestType(dialogue["test"].get<std::string>());
+                    switch(test){
+                        case QUEST_COMPLETE:
+                            for(auto & quest : questLog){
+                                if(quest.issuingNPC == name && quest.tag == dialogue["tag"].get<std::string>() && quest.complete){
+                                    dialogueTree = dialogue["next"];
+                                    return dialogue["line"].get<std::string>();
+                                }else{
+                                    continue;
+                                }
+                            }
+                            continue;
+                        case QUEST_GIVEN:
+                            for(auto & quest : questLog){
+                                if(quest.issuingNPC == name && quest.tag == dialogue["tag"].get<std::string>() && !quest.complete){
+                                    dialogueTree = dialogue["next"];
+                                    return dialogue["line"].get<std::string>();
+                                }else{
+                                    continue;
+                                }
+                            }
+                            continue;
+                        default:
+                            throw std::runtime_error("invalid condition in dialogue for " + name + "!");
+                            return "";
+                    }
+                }
+                case QUEST:{
+                    Quest newQuest = Quest("data/quests/" + dialogue["quest"].get<std::string>(), name);
+                    questLog.push_back(newQuest);
+                    dialogueTree = dialogue["next"];
+                    return dialogue["line"].get<std::string>();
+                }
+                case REWARD:{
+                    int value = dialogue["number"].get<int>();
+                    Item itemType = misc::map_Item(dialogue["item"].get<std::string>());
+                    for(auto & quest : questLog){
+                        if(quest.issuingNPC == name && quest.tag == dialogue["tag"].get<std::string>() && quest.complete && !quest.rewarded){
+                            player.give(itemType, value);
+                            quest.rewarded = true;
+                        }
+                    }
+                    dialogueTree = dialogue["next"];
+                    return dialogue["line"].get<std::string>();
+                }
+                case DEFAULT:{
+                    dialogueTree = dialogue["next"];
+                    return dialogue["line"].get<std::string>();
+                }
+                default:{
+                    throw std::runtime_error("invalid dialogue for " + name + "!");
+                    return "";
+                }
+            }
         }
+        return "";
     }
 }
 
 void NPC::stopDialogue(){
     talking = false;
-    dialogueTracker = -1;
+    dialogueTree = npcData["dialogue_tree"];
 }

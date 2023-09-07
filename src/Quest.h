@@ -1,17 +1,23 @@
 #pragma once
-
-class NPC;
+#include "misc.h"
 
 class Quest{
     public:
         bool complete = false;
+        bool rewarded = false;
+        std::string issuingNPC;
+        std::string tag;
+        QuestType type;
+        MonsterType monster;
         int numberToKill;
         int numberKilled = 0;
-        NPC* issuingNPC;
-
+        
         Quest();
-        Quest(int numToKillVal, NPC* issuingNPCAddress);
+        Quest(std::string questFileName, std::string npcName);
 
         void update(int killed);
+    
+    private:
+        json questData;
 
 };

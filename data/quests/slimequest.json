@@ -1,0 +1,6 @@
+{
+    "type": "KILL",
+    "number": 2,
+    "object": "SLIME",
+    "tag": "kill slimes"
+}

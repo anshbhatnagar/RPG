@@ -17,6 +17,16 @@ void Character::wound(int damage){
     }
 }
 
+void Character::give(Item type, int value){
+    switch(type){
+        case GOLD:
+            gold += value;
+            break;
+        case WEAPON:
+            break;
+    }
+}
+
 bool Character::inInteractionDistance(Sprite& sprite){
     sf::Vector2f dist = getRealPosition() - sprite.getRealPosition();
 

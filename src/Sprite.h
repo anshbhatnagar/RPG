@@ -1,5 +1,6 @@
 #pragma once
 #include <SFML/Graphics.hpp>
+#include "misc.h"
 
 class Sprite: public sf::Sprite{
     public:

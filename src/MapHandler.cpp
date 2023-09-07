@@ -2,16 +2,7 @@
 #include <iostream>
 
 MapHandler::MapHandler(std::string mapFileName, int sprSizeVal, int widthVal, int heightVal){
-    std::ifstream mapFile;
-    mapFile.open(mapFileName);
-
-    if(mapFile.fail()){
-        throw std::runtime_error("error loading map file!");
-    }
-
-    map = json::parse(mapFile);
-
-    mapFile.close();
+    map = misc::readFile(mapFileName, "map");
 
     width = widthVal;
     height = heightVal;

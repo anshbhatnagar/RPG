@@ -150,7 +150,7 @@ class Game{
             window.setFramerateLimit(120);
             window.setVerticalSyncEnabled(true);
 
-            MapHandler map = MapHandler("maps/map1.json", 16, 25, 19);
+            MapHandler map = MapHandler("data/maps/map1.json", 16, 25, 19);
 
             map.loadMap(mapSprites, mapSolidSprites, sheets);
 
@@ -170,7 +170,7 @@ class Game{
             manaBar.initialise(player.health, sheets[10], sf::Vector2f(20.f, 40.f));
             uiSprites.push_back(&manaBar);
 
-            strawHat.initialise(100, 50, sf::FloatRect(sf::Vector2f(600.f, 0.f), sf::Vector2f(200.f, 200.f)), sf::Vector2f(700.f, 20.f), sheets[5]);
+            strawHat.initialise("data/npc/strawhat.json", sheets);
 
             NPCs.push_back(&strawHat);
 
@@ -324,7 +324,9 @@ class Game{
                 if(enemy.dead){
                     slimes.erase(slimes.begin()+i);
                     for(auto & quest : questLog){
-                        quest.update(1);
+                        if(quest.type == KILL){
+                            if(quest.monster == SLIME){quest.update(1);}
+                        }
                     }
                 }else{
                     i++;
@@ -336,6 +338,11 @@ class Game{
             for(auto & enemy : skeletons){
                 if(enemy.dead){
                     skeletons.erase(skeletons.begin()+i);
+                    for(auto & quest : questLog){
+                        if(quest.type == KILL){
+                            if(quest.monster == SKELETON){quest.update(1);}
+                        }
+                    }
                 }else{
                     i++;
                 }
@@ -392,8 +399,12 @@ class Game{
                 talkingNPC->talking = true;
                 player.talking = true;
                 uiSprites.push_back(&dialogueBox);
-                talkingNPC->nextDialogue(speech, questLog);
+                speech.setString(talkingNPC->nextDialogue(questLog, player));
                 uiSprites.push_back(&speech);
+
+                if(speech.getString() == ""){
+                    throw std::runtime_error("dialogue failed to process!");
+                }
             }
         }
 
@@ -457,7 +468,10 @@ class Game{
                                 if(gamestate == running){
                                     player.attackNearbyEnemies(enemies);
                                 }else if(gamestate == dialoguing){
-                                    talkingNPC->nextDialogue(speech, questLog);
+                                    speech.setString(talkingNPC->nextDialogue(questLog, player));
+                                    if(speech.getString() == ""){
+                                        endDialogue();
+                                    }
                                 }
                             }
                             break;

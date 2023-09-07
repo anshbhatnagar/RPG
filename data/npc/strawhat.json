@@ -1,0 +1,46 @@
+{
+    "name": "Straw Hat",
+    "filename": "npc.png",
+    "sheet_ID": 5,
+    "sprite_size": 48,
+    "coords": [700, 50],
+    "health": 100,
+    "speed": 50,
+    "confinement": {
+        "position": [600, 0],
+        "size": [200, 200]
+    },
+    "dialogue_tree": [{
+        "type": "CONDITION",
+        "line": "Brilliant work! You slayed those slimes!",
+        "test": "QUEST_COMPLETE",
+        "tag": "kill slimes",
+        "next": [{
+            "type": "REWARD",
+            "line": "As a reward, here is 5 gold!",
+            "number": 5,
+            "item": "GOLD",
+            "tag": "kill slimes",
+            "next": null
+        }]
+    },{
+        "type": "CONDITION",
+        "line": "Hey, you haven't killed those slimes yet!",
+        "test": "QUEST_GIVEN",
+        "tag": "kill slimes",
+        "next": null
+    },{
+        "type": "DEFAULT",
+        "line": "Ah, traveller! Would you like a quest to complete?",
+        "next": [{
+            "type": "DEFAULT",
+            "line":"I'll take your silence as a yes!",
+            "next": [{
+                "type": "QUEST",
+                "line": "Here's a quest:\nKill two slimes and come back to me!",
+                "quest": "slimequest.json",
+                "next": null
+            }]
+        }]
+    }]
+}

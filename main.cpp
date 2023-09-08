@@ -14,24 +14,28 @@ class InterfaceBar: public sf::Sprite{
             bar.clear();
             base.setTexture(texture);
             base.setTextureRect(sf::IntRect(0,0,50,10));
-            life.setTexture(texture);
-            life.setTextureRect(sf::IntRect(0,10,50,10));
+            barFill.setTexture(texture);
+            barFill.setTextureRect(sf::IntRect(0,10,50,10));
             border.setTexture(texture);
             border.setTextureRect(sf::IntRect(0,20,50,10));
             mask = sf::RectangleShape(sf::Vector2f(50.f,10.f));
             mask.setFillColor(sf::Color::Transparent);
-            mask.setPosition(sf::Vector2f(life.getPosition().x + life.getGlobalBounds().width, 0.f));
+            mask.setPosition(sf::Vector2f(barFill.getPosition().x + barFill.getGlobalBounds().width, 0.f));
             setScale(sf::Vector2f(2.f, 2.f));
             setPosition(position);
             update(playerValue);
         }
 
         void update(float value){
-            life.setPosition(sf::Vector2f((value-playerValue)/2.f, 0));
-            mask.setPosition(sf::Vector2f(life.getPosition().x + life.getGlobalBounds().width+1.f, 0.f));
+            barFill.setPosition(sf::Vector2f((value-playerValue)/2.f, 0));
+            if(value <= 0){
+                mask.setPosition(sf::Vector2f(0.f, 0.f));
+            }else{
+                mask.setPosition(sf::Vector2f(barFill.getPosition().x + barFill.getGlobalBounds().width, 0.f));
+            }
             bar.clear(sf::Color::Transparent);
             bar.draw(base);
-            bar.draw(life, baseAlpha);
+            bar.draw(barFill, baseAlpha);
             bar.draw(mask, sf::BlendNone);
             bar.draw(border);
             bar.display();
@@ -42,7 +46,7 @@ class InterfaceBar: public sf::Sprite{
         float playerValue;
         sf::RenderTexture bar;
         sf::Sprite base;
-        sf::Sprite life;
+        sf::Sprite barFill;
         sf::BlendMode baseAlpha = sf::BlendMode(sf::BlendMode::One, sf::BlendMode::Zero, sf::BlendMode::Add, sf::BlendMode::Zero, sf::BlendMode::One, sf::BlendMode::Add);
         sf::Sprite border;
         sf::RectangleShape mask;
@@ -167,7 +171,7 @@ class Game{
 
             healthBar.initialise(player.health, sheets[9], sf::Vector2f(20.f, 20.f));
             uiSprites.push_back(&healthBar);
-            manaBar.initialise(player.health, sheets[10], sf::Vector2f(20.f, 40.f));
+            manaBar.initialise(player.health, sheets[10], sf::Vector2f(20.f, 42.f));
             uiSprites.push_back(&manaBar);
 
             strawHat.initialise("data/npc/strawhat.json", sheets);

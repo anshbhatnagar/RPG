@@ -3,8 +3,9 @@
 
 class Enemy: public Character{
     public:
-
         void checkPlayerNearby(Character& player);
+
+        void generateDrop(std::vector<Sprite>& drops);
     
     protected:
         float elapsedMovementSecs = 0;

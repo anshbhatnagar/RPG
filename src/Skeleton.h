@@ -12,6 +12,8 @@ class Skeleton: public Enemy{
         void attack(Character& player);
 
         void attackNearbyPlayer(Character& player);
+
+        void generateDrop(std::vector<Sprite>& drops, std::vector<sf::Texture>& sheets);
     
     protected:
         void defaultAnimate(int& state);

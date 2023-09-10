@@ -11,7 +11,7 @@ void NPC::initialise(std::string npcFileName, std::vector<sf::Texture>& sheets){
 
     sf::Vector2f position = sf::Vector2f(npcData["coords"][0].get<float>(), npcData["coords"][1].get<float>());
 
-    bounds = sf::FloatRect(position+sprSize*1.f*sf::Vector2f(0.66f, 1.4f), sprSize*1.f*sf::Vector2f(0.66f, 0.4f));
+    setBounds(position+sprSize*1.f*sf::Vector2f(0.66f, 1.4f), sprSize*1.f*sf::Vector2f(0.66f, 0.4f));
 
     setScale(sf::Vector2f(2.f, 2.f));
 

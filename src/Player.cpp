@@ -3,7 +3,7 @@
 
 void Player::initialise(int healthVal, float speedVal, sf::Vector2f position, sf::Texture& texture){
     int sprSize = 48;
-    bounds = sf::FloatRect(position+sprSize*1.f*sf::Vector2f(0.66f, 1.4f), sprSize*1.f*sf::Vector2f(0.66f, 0.4f));
+    setBounds(position+sprSize*1.f*sf::Vector2f(0.66f, 1.4f), sprSize*1.f*sf::Vector2f(0.66f, 0.4f));
     setScale(sf::Vector2f(2.f, 2.f));
 
     hitAction = Action(0.4f);
@@ -105,7 +105,7 @@ void Player::calcMovement(float dt){
     bool multikey = false;
     moving = false;
 
-    if(!talking && !dead){
+    if(!talking && !inInventory && !dead){
         if(sf::Keyboard::isKeyPressed(sf::Keyboard::D)){
             moving = true;
             translation.translate(unit);

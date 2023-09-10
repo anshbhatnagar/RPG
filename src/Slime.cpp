@@ -4,7 +4,7 @@ void Slime::initialise(sf::Vector2f position, sf::Texture& texture){
     int sprSize = 32;
     int healthVal = 50;
     int speedVal = 50;
-    bounds = sf::FloatRect(position+sprSize*1.f*sf::Vector2f(0.7f, 1.f), sprSize*1.f*sf::Vector2f(0.7f, 0.5f));
+    setBounds(position+sprSize*1.f*sf::Vector2f(0.7f, 1.f), sprSize*1.f*sf::Vector2f(0.7f, 0.5f));
     setScale(sf::Vector2f(2.f, 2.f));
 
     deathAction = Action(0.5f);

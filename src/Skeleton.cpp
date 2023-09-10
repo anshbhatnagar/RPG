@@ -4,7 +4,7 @@ void Skeleton::initialise(sf::Vector2f position, sf::Texture& texture){
     int sprSize = 64;
     int healthVal = 100;
     int speedVal = 90;
-    bounds = sf::FloatRect(position+sprSize*1.f*sf::Vector2f(0.8f, 1.47f), sprSize*1.f*sf::Vector2f(0.3f, 0.2f));
+    setBounds(position+sprSize*1.f*sf::Vector2f(0.8f, 1.47f), sprSize*1.f*sf::Vector2f(0.3f, 0.2f));
     setScale(sf::Vector2f(2.f, 2.f));
 
     attackAction = Action(1.f);
@@ -146,4 +146,14 @@ void Skeleton::attackNearbyPlayer(Character& player){
             attack(player);
         }
     }
+}
+
+void Skeleton::generateDrop(std::vector<Sprite>& drops, std::vector<sf::Texture>& sheets){
+    int sprSize = 16;
+    Sprite goldDrop;
+    goldDrop.initialise(getRealPosition()-sf::Vector2f(1.f, 1.f)*(float)sprSize, sprSize, sheets[11]);
+    goldDrop.setScale(sf::Vector2f(2.f, 2.f));
+    goldDrop.setTextureRect(sf::IntRect(0*sprSize,2*sprSize,sprSize,sprSize));
+    goldDrop.setBounds(goldDrop.getPosition(), getScale()*(float)sprSize);
+    drops.push_back(goldDrop);
 }

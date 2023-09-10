@@ -8,6 +8,10 @@ void Sprite::initialise(sf::Vector2f position, int sprSizeVal, sf::Texture& text
     setPosition(position);
 }
 
+void Sprite::setBounds(sf::Vector2f position, sf::Vector2f size){
+    bounds = sf::FloatRect(position, size);
+}
+
 sf::RectangleShape Sprite::getBoundingShapeOutline(){
     sf::RectangleShape boundingShape;
     boundingShape.setSize(sf::Vector2f(bounds.width, bounds.height));

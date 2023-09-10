@@ -77,7 +77,7 @@ void MapHandler::loadSolidMap(std::vector<Sprite>& mapSolidSprites, std::vector<
                     break;
             }
 
-            block.bounds=sf::FloatRect(blockPosition, boundSize);
+            block.setBounds(blockPosition, boundSize);
 
             mapSolidSprites.push_back(block);
         }

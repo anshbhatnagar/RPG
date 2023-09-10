@@ -9,6 +9,8 @@ class Player: public Character{
         int mana = 100;
 
         bool talking = false;
+
+        bool inInventory = false;
         
         void initialise(int healthVal, float speedVal, sf::Vector2f position, sf::Texture& texture);
 

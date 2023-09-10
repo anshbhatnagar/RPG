@@ -4,7 +4,7 @@
 #include <cmath>
 #include "src/RPG.h"
 
-enum GameState {running, dialoguing};
+enum GameState {running, dialoguing, inventorying};
 
 class InterfaceBar: public sf::Sprite{
     public:
@@ -71,10 +71,14 @@ class Game{
         NPC strawHat;
         NPC* talkingNPC;
         sf::Sprite dialogueBox;
+        sf::Sprite inventoryBox;
+        std::vector<sf::Sprite> inventoryIcons;
+        std::vector<sf::Text> inventoryNumbers;
         sf::Text speech;
         sf::Font dialogueFont;
         std::vector<Sprite> mapSprites;
         std::vector<Sprite> mapSolidSprites;
+        std::vector<Sprite> drops;
         std::vector<DynamicSprite*> dynSprites;
         std::vector<Sprite*> drawSprites;
         std::vector<sf::Drawable*> uiSprites;
@@ -98,6 +102,8 @@ class Game{
             sf::Texture fireballSheet;
             sf::Texture healthBarSheet;
             sf::Texture manaBarSheet;
+            sf::Texture coinSheet;
+            sf::Texture inventoryTexture;
 
             if(!playerSheet.loadFromFile("sprites/characters/player.png")){
                 throw std::runtime_error("failed to load player sprite!");
@@ -132,6 +138,12 @@ class Game{
             if(!manaBarSheet.loadFromFile("sprites/ui/manabar.png")){
                 throw std::runtime_error("failed to load mana bar!");
             }
+            if(!coinSheet.loadFromFile("sprites/objects/coins.png")){
+                throw std::runtime_error("failed to load coin sprites!");
+            }
+            if(!inventoryTexture.loadFromFile("sprites/ui/inventory.png")){
+                throw std::runtime_error("failed to load inventory sprite!");
+            }
             sheets.push_back(playerSheet);
             sheets.push_back(slimeSheet);
             sheets.push_back(grass);
@@ -143,6 +155,8 @@ class Game{
             sheets.push_back(fireballSheet);
             sheets.push_back(healthBarSheet);
             sheets.push_back(manaBarSheet);
+            sheets.push_back(coinSheet);
+            sheets.push_back(inventoryTexture);
 
             if(!dialogueFont.loadFromFile("fonts/Ubuntu-Regular.ttf")){
                 throw std::runtime_error("failed to load dialogue font!");
@@ -162,6 +176,10 @@ class Game{
             dialogueBox.setScale(sf::Vector2f(2.f, 2.f));
             int dialoguePadding = 10;
             dialogueBox.setPosition(sf::Vector2f(0.5f*(screenWidth-dialogueBox.getGlobalBounds().width), screenHeight - dialogueBox.getGlobalBounds().height - dialoguePadding));
+
+            inventoryBox.setTexture(sheets[12], true);
+            inventoryBox.setScale(sf::Vector2f(2.f, 2.f));
+            inventoryBox.setPosition(0.5f*sf::Vector2f(screenWidth-inventoryBox.getGlobalBounds().width, screenHeight-inventoryBox.getGlobalBounds().height));
 
             speech.setFont(dialogueFont);
             speech.setCharacterSize(15);
@@ -341,6 +359,7 @@ class Game{
 
             for(auto & enemy : skeletons){
                 if(enemy.dead){
+                    enemy.generateDrop(drops, sheets);
                     skeletons.erase(skeletons.begin()+i);
                     for(auto & quest : questLog){
                         if(quest.type == KILL){
@@ -371,6 +390,10 @@ class Game{
 
             for(auto & sprite : dynSprites){
                 drawSprites.push_back(sprite);
+            }
+
+            for(auto & sprite : drops){
+                drawSprites.push_back(&sprite);
             }
 
             int n = drawSprites.size();
@@ -439,6 +462,53 @@ class Game{
             }
         }
 
+        void checkDrops(){
+            int i = 0;
+            for(auto & sprite : drops){
+                if(player.bounds.intersects(sprite.bounds)){
+                    player.give(GOLD, 2);
+                    drops.erase(drops.begin()+i);
+                }
+                i++;
+            }
+        }
+
+        void openInventory(){
+            gamestate = inventorying;
+            player.inInventory = true;
+            int padding = 20;
+            int sprSize = 16;
+            int numberOffset = 4;
+            sf::Sprite coinIcon;
+            coinIcon.setTexture(sheets[11]);
+            coinIcon.setScale(sf::Vector2f(2.f, 2.f));
+            coinIcon.setTextureRect(sf::IntRect(3*sprSize,2*sprSize,sprSize,sprSize));
+            coinIcon.setPosition(inventoryBox.getPosition() + sf::Vector2f(padding, padding));
+
+            sf::Text coinNumber;
+            coinNumber.setFont(dialogueFont);
+            coinNumber.setOutlineThickness(1.f);
+            coinNumber.setCharacterSize(12);
+            coinNumber.setPosition(coinIcon.getPosition() + 2.f*(sf::Vector2f(sprSize, sprSize) - sf::Vector2f((float)numberOffset, (float)numberOffset)));
+            coinNumber.setString(std::to_string(player.gold));
+
+            inventoryIcons.push_back(coinIcon);
+            inventoryNumbers.push_back(coinNumber);
+            uiSprites.push_back(&inventoryBox);
+            uiSprites.push_back(&inventoryIcons[0]);
+            uiSprites.push_back(&inventoryNumbers[0]);
+        }
+
+        void closeInventory(){
+            inventoryIcons.clear();
+            inventoryNumbers.clear();
+            uiSprites.clear();
+            uiSprites.push_back(&healthBar);
+            uiSprites.push_back(&manaBar);
+            gamestate = running;
+            player.inInventory = false;
+        }
+
         void mainLoop(){
             sf::Clock clock;
 
@@ -452,11 +522,22 @@ class Game{
 
                     switch(event.type){
                         case sf::Event::KeyPressed:
-                            if(event.key.code == sf::Keyboard::E){
-                                if(gamestate == running){
-                                    startDialogue();
-                                }else if(gamestate == dialoguing){
-                                    endDialogue();
+                            switch(event.key.code){
+                                case sf::Keyboard::E:{
+                                    if(gamestate == running){
+                                        startDialogue();
+                                    }else if(gamestate == dialoguing){
+                                        endDialogue();
+                                    }
+                                    break;
+                                }
+                                case sf::Keyboard::I:{
+                                    if(gamestate == running){
+                                        openInventory();
+                                    }else if(gamestate == inventorying){
+                                        closeInventory();
+                                    }
+                                    break;
                                 }
                             }
                             break;
@@ -494,10 +575,12 @@ class Game{
                 updateDynamicSprites(dt);
                 healthBar.update(player.health);
                 manaBar.update(player.mana);
-                layerSprites();
-
+                
                 checkDialogue();
                 checkProjectiles();
+                checkDrops();
+
+                layerSprites();
 
                 window.clear();
 

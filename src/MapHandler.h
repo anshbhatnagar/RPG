@@ -11,7 +11,7 @@ class MapHandler{
         int width;
         int height;
 
-        MapHandler(std::string mapFileName, int sprSizeVal, int widthVal, int heightVal);
+        MapHandler(std::string mapFileName);
 
         void loadMap(std::vector<Sprite>& mapSprites, std::vector<Sprite>& mapSolidSprites, std::vector<sf::Texture>& sheets);
 

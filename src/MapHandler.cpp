@@ -1,12 +1,12 @@
 #include "MapHandler.h"
 #include <iostream>
 
-MapHandler::MapHandler(std::string mapFileName, int sprSizeVal, int widthVal, int heightVal){
+MapHandler::MapHandler(std::string mapFileName){
     map = misc::readFile(mapFileName, "map");
 
-    width = widthVal;
-    height = heightVal;
-    sprSize = sprSizeVal;
+    width = map["width"].get<int>();
+    height = map["height"].get<int>();
+    sprSize = map["tilewidth"].get<int>();
 }
 
 void MapHandler::loadMap(std::vector<Sprite>& mapSprites, std::vector<Sprite>& mapSolidSprites, std::vector<sf::Texture>& sheets){

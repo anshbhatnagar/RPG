@@ -6,9 +6,34 @@
 
 enum GameState {running, dialoguing, inventorying};
 
-class InterfaceBar: public sf::Sprite{
+class GuiSprite: public sf::Sprite{
     public:
-        void initialise(float value, sf::Texture& texture, sf::Vector2f position){
+        void initialise(sf::Texture& texture){
+            setTexture(texture, true);
+            setScale(sf::Vector2f(2.f, 2.f));
+        }
+
+        void setRelPosition(sf::Vector2f position, sf::View view){
+            relPosition = position;
+            updatePosition(view);
+        }
+
+        void updatePosition(sf::View view){
+            setPosition(viewCoords(view, relPosition));
+        }
+    protected:
+        sf::Vector2f relPosition;
+
+        sf::Vector2f viewCoords(sf::View view, sf::Vector2f coords){
+            sf::Vector2f viewPos = view.getCenter() - 0.5f*view.getSize();
+            coords += viewPos;
+            return coords;
+        }
+};
+
+class InterfaceBar: public GuiSprite{
+    public:
+        void initialise(float value, sf::Texture& texture, sf::Vector2f position, sf::View view){
             playerValue = value;
             bar.create(50,10);
             bar.clear();
@@ -22,7 +47,8 @@ class InterfaceBar: public sf::Sprite{
             mask.setFillColor(sf::Color::Transparent);
             mask.setPosition(sf::Vector2f(barFill.getPosition().x + barFill.getGlobalBounds().width, 0.f));
             setScale(sf::Vector2f(2.f, 2.f));
-            setPosition(position);
+            relPosition = position;
+            updatePosition(view);
             update(playerValue);
         }
 
@@ -41,6 +67,8 @@ class InterfaceBar: public sf::Sprite{
             bar.display();
             setTexture(bar.getTexture());
         }
+
+        
     
     private:
         float playerValue;
@@ -64,14 +92,17 @@ class Game{
         GameState gamestate = running;
         int screenWidth = 800;
         int screenHeight = 608;
-        sf::RenderWindow window{sf::VideoMode(screenWidth, screenHeight), "RPG!"};
+        int windowWidth = screenWidth;
+        int windowHeight = screenHeight;
+        sf::RenderWindow window{sf::VideoMode(windowWidth, windowHeight), "RPG!"};
+        sf::View view;
         Player player;
         InterfaceBar healthBar;
         InterfaceBar manaBar;
         NPC strawHat;
         NPC* talkingNPC;
-        sf::Sprite dialogueBox;
-        sf::Sprite inventoryBox;
+        GuiSprite dialogueBox;
+        GuiSprite inventoryBox;
         std::vector<sf::Sprite> inventoryIcons;
         std::vector<sf::Text> inventoryNumbers;
         sf::Text speech;
@@ -167,29 +198,34 @@ class Game{
             loadResources();
             window.setFramerateLimit(120);
             window.setVerticalSyncEnabled(true);
+            view.reset(sf::FloatRect(0,0,windowWidth,windowHeight));
+            view.setViewport(sf::FloatRect(0.f, 0.f, 1.f, 1.f));
+            window.setView(view);
 
-            MapHandler map = MapHandler("data/maps/map1.json", 16, 25, 19);
+            MapHandler map = MapHandler("data/maps/map1.json");
 
             map.loadMap(mapSprites, mapSolidSprites, sheets);
 
-            dialogueBox.setTexture(sheets[6], true);
-            dialogueBox.setScale(sf::Vector2f(2.f, 2.f));
-            int dialoguePadding = 10;
-            dialogueBox.setPosition(sf::Vector2f(0.5f*(screenWidth-dialogueBox.getGlobalBounds().width), screenHeight - dialogueBox.getGlobalBounds().height - dialoguePadding));
+            screenWidth = 2*map.width*map.sprSize;
+            screenHeight = 2*map.height*map.sprSize;
 
-            inventoryBox.setTexture(sheets[12], true);
-            inventoryBox.setScale(sf::Vector2f(2.f, 2.f));
-            inventoryBox.setPosition(0.5f*sf::Vector2f(screenWidth-inventoryBox.getGlobalBounds().width, screenHeight-inventoryBox.getGlobalBounds().height));
+            int dialoguePadding = 10;
+            dialogueBox.initialise(sheets[6]);
+            dialogueBox.setRelPosition(sf::Vector2f(0.5f*(windowWidth-dialogueBox.getGlobalBounds().width), windowHeight - dialogueBox.getGlobalBounds().height - dialoguePadding), view);
+
+            inventoryBox.initialise(sheets[12]);
+            inventoryBox.setRelPosition(0.5f*sf::Vector2f(windowWidth-inventoryBox.getGlobalBounds().width, windowHeight-inventoryBox.getGlobalBounds().height), view);
 
             speech.setFont(dialogueFont);
             speech.setCharacterSize(15);
             speech.setPosition(dialogueBox.getPosition() + 2.f*sf::Vector2f((float)dialoguePadding, (float)dialoguePadding));
             
             player.initialise(100, 200, sf::Vector2f(0.f, 0.f), sheets[0]);
+            view.setCenter(player.getRealPosition());
 
-            healthBar.initialise(player.health, sheets[9], sf::Vector2f(20.f, 20.f));
+            healthBar.initialise(player.health, sheets[9], sf::Vector2f(20.f, 20.f), view);
             uiSprites.push_back(&healthBar);
-            manaBar.initialise(player.health, sheets[10], sf::Vector2f(20.f, 42.f));
+            manaBar.initialise(player.health, sheets[10], sf::Vector2f(20.f, 42.f), view);
             uiSprites.push_back(&manaBar);
 
             strawHat.initialise("data/npc/strawhat.json", sheets);
@@ -322,6 +358,33 @@ class Game{
             }
         }
 
+        void updateView(){
+            sf::FloatRect viewRect = sf::FloatRect(view.getCenter() - 0.5f*view.getSize(), view.getSize());
+            sf::Vector2f newViewPos;
+            if(player.getRealPosition().x < 0.5f*view.getSize().x){
+                newViewPos.x = 0.5f*view.getSize().x;
+            }else if(player.getRealPosition().x > screenWidth - 0.5f*view.getSize().x){
+                newViewPos.x = screenWidth - 0.5f*view.getSize().x;
+            }else{
+                newViewPos.x = player.getRealPosition().x;
+            }
+
+            if(player.getRealPosition().y < 0.5f*view.getSize().y){
+                newViewPos.y = 0.5f*view.getSize().y;
+            }else if(player.getRealPosition().y > screenHeight - 0.5f*view.getSize().y){
+                newViewPos.y = screenHeight - 0.5f*view.getSize().y;
+            }else{
+                newViewPos.y = player.getRealPosition().y;
+            }
+
+            view.setCenter(newViewPos);
+            window.setView(view);
+            healthBar.updatePosition(view);
+            manaBar.updatePosition(view);
+            dialogueBox.updatePosition(view);
+            inventoryBox.updatePosition(view);
+        }
+
         void updateEnemies(){
             enemies.clear();
 
@@ -423,10 +486,12 @@ class Game{
             }
 
             if(gamestate == dialoguing){
+                int dialoguePadding = 10;
                 talkingNPC->talking = true;
                 player.talking = true;
                 uiSprites.push_back(&dialogueBox);
                 speech.setString(talkingNPC->nextDialogue(questLog, player));
+                speech.setPosition(dialogueBox.getPosition() + 2.f*sf::Vector2f((float)dialoguePadding, (float)dialoguePadding));
                 uiSprites.push_back(&speech);
 
                 if(speech.getString() == ""){
@@ -573,6 +638,7 @@ class Game{
                 grimReaper();
                 updateEnemies();
                 updateDynamicSprites(dt);
+                updateView();
                 healthBar.update(player.health);
                 manaBar.update(player.mana);
                 

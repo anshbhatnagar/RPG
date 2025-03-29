@@ -1,0 +1,10 @@
+DungeonCrawler: main.cpp
+	g++ -o DungeonCrawler src/*.cpp main.cpp -libsfml-graphics.so.2.5.1 -lsfml-window -lsfml-system
+
+.PHONY: test clean
+
+test: DungeonCrawler
+	./DungeonCrawler
+
+clean:
+	rm -f DungeonCrawler
